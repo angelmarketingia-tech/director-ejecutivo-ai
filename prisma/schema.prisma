@@ -1,0 +1,342 @@
+// Director Comercial AI — modelo de datos
+// Proveedor por defecto: PostgreSQL. Ajusta DATABASE_URL en .env.local.
+// Genera el cliente con `npm run db:generate` y aplica con `npm run db:push`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Usuarios y permisos ─────────────────────────
+
+enum Role {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(OPERATOR)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaigns   Campaign[]
+  auditLogs   AuditLog[]
+  assignments Lead[]     @relation("HumanOwner")
+}
+
+// ───────────────────────── Agentes ─────────────────────────
+
+enum AgentKind {
+  DIRECTOR
+  PROSPECT
+  RESEARCH
+  SCORING
+  EMAIL
+  VOICE
+}
+
+enum AgentStatus {
+  ACTIVE
+  PROSPECTING
+  RESEARCHING
+  SCORING
+  WRITING
+  CALLING
+  WAITING
+  BLOCKED
+  IDLE
+}
+
+model Agent {
+  id          String      @id @default(cuid())
+  kind        AgentKind   @unique
+  name        String
+  status      AgentStatus @default(IDLE)
+  currentTask String?
+  throughput  Int         @default(0)
+  config      Json? // límites, prompt overrides, modelo LLM
+  updatedAt   DateTime    @updatedAt
+
+  tasks  Task[]
+  events Event[]
+}
+
+// ───────────────────────── Campañas ─────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+model Campaign {
+  id              String         @id @default(cuid())
+  name            String
+  niche           String
+  city            String
+  country         String         @default("Ecuador")
+  service         String
+  status          CampaignStatus @default(DRAFT)
+  dailyEmailCap   Int            @default(200)
+  dailyCallCap    Int            @default(60)
+  dailyWhatsapCap Int            @default(120)
+  ownerId         String?
+  owner           User?          @relation(fields: [ownerId], references: [id])
+  createdAt       DateTime       @default(now())
+
+  leads     Lead[]
+  companies Company[]
+}
+
+// ───────────────────────── Empresas / Leads ─────────────────────────
+
+model Company {
+  id           String   @id @default(cuid())
+  name         String
+  category     String
+  city         String
+  country      String
+  address      String?
+  lat          Float?
+  lng          Float?
+  website      String?
+  hasWebsite   Boolean  @default(false)
+  rating       Float?
+  reviews      Int?
+  digitalScore Int      @default(0)
+  source       String? // "google_maps" | "manual" | "import"
+  externalId   String? // place_id u otro id de la fuente
+  campaignId   String?
+  campaign     Campaign? @relation(fields: [campaignId], references: [id])
+  createdAt    DateTime @default(now())
+
+  leads Lead[]
+
+  @@unique([externalId, source])
+  @@index([city, category])
+}
+
+enum LeadTemperature {
+  COLD
+  WARM
+  HOT
+}
+
+enum PipelineStage {
+  PROSPECTED
+  RESEARCHED
+  QUALIFIED
+  CONTACTED
+  ENGAGED
+  MEETING
+  WON
+  LOST
+}
+
+enum ConsentState {
+  NONE
+  SOFT_OPTIN
+  OPT_IN
+  OPT_OUT
+}
+
+model Lead {
+  id               String          @id @default(cuid())
+  companyId        String
+  company          Company         @relation(fields: [companyId], references: [id])
+  campaignId       String?
+  campaign         Campaign?       @relation(fields: [campaignId], references: [id])
+  contactName      String?
+  phone            String?
+  email            String?
+  score            Int             @default(0)
+  temperature      LeadTemperature @default(COLD)
+  stage            PipelineStage   @default(PROSPECTED)
+  closeProbability Int             @default(0)
+  needs            String[]
+  nextAction       String?
+  nextActionAt     DateTime?
+  consent          ConsentState    @default(NONE)
+  humanOwnerId     String?
+  humanOwner       User?           @relation("HumanOwner", fields: [humanOwnerId], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  emails     EmailMessage[]
+  whatsapps  WhatsAppMessage[]
+  calls      Call[]
+  objections Objection[]
+  tasks      Task[]
+  events     Event[]
+  meetings   Meeting[]
+
+  @@index([stage, temperature])
+}
+
+// ───────────────────────── Canales ─────────────────────────
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  READ
+  REPLIED
+  BOUNCED
+  FAILED
+}
+
+model EmailMessage {
+  id         String        @id @default(cuid())
+  leadId     String
+  lead       Lead          @relation(fields: [leadId], references: [id])
+  subject    String
+  body       String
+  template   String
+  status     MessageStatus @default(QUEUED)
+  providerId String?
+  createdAt  DateTime      @default(now())
+}
+
+model WhatsAppMessage {
+  id           String        @id @default(cuid())
+  leadId       String
+  lead         Lead          @relation(fields: [leadId], references: [id])
+  direction    String // "out" | "in"
+  body         String
+  templateName String?
+  status       MessageStatus @default(QUEUED)
+  providerId   String?
+  createdAt    DateTime      @default(now())
+}
+
+enum CallOutcome {
+  CONNECTED
+  VOICEMAIL
+  NO_ANSWER
+  CALLBACK
+  NOT_INTERESTED
+  MEETING_BOOKED
+}
+
+model Call {
+  id               String      @id @default(cuid())
+  leadId           String
+  lead             Lead        @relation(fields: [leadId], references: [id])
+  durationSec      Int         @default(0)
+  outcome          CallOutcome
+  interest         String // low | medium | high
+  closeProbability Int         @default(0)
+  nextStep         String?
+  followUpAt       DateTime?
+  recordingUrl     String?
+  transcript       String?
+  providerId       String? // sid de Twilio / id ElevenLabs
+  createdAt        DateTime    @default(now())
+
+  objections Objection[]
+}
+
+model Objection {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  callId    String?
+  call      Call?    @relation(fields: [callId], references: [id])
+  text      String
+  category  String? // precio | timing | autoridad | necesidad | confianza
+  createdAt DateTime @default(now())
+}
+
+model Meeting {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id])
+  scheduledAt DateTime
+  channel     String // call | video | presencial
+  calendarId  String?
+  eventId     String?
+  createdAt   DateTime @default(now())
+}
+
+// ───────────────────────── Orquestación ─────────────────────────
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+  BLOCKED
+}
+
+model Task {
+  id        String     @id @default(cuid())
+  agentId   String
+  agent     Agent      @relation(fields: [agentId], references: [id])
+  leadId    String?
+  lead      Lead?      @relation(fields: [leadId], references: [id])
+  type      String // prospect | research | score | email | whatsapp | call | followup
+  status    TaskStatus @default(PENDING)
+  priority  Int        @default(5)
+  payload   Json?
+  result    Json?
+  error     String?
+  runAt     DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([status, runAt])
+}
+
+enum EventLevel {
+  INFO
+  SUCCESS
+  WARN
+  ALERT
+}
+
+model Event {
+  id        String     @id @default(cuid())
+  agentId   String?
+  agent     Agent?     @relation(fields: [agentId], references: [id])
+  leadId    String?
+  lead      Lead?      @relation(fields: [leadId], references: [id])
+  level     EventLevel @default(INFO)
+  message   String
+  createdAt DateTime   @default(now())
+
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+// Configuración de proveedores externos (no almacenar secretos aquí en producción;
+// usar un gestor de secretos. Este modelo guarda metadatos y estado de conexión).
+model Integration {
+  id        String   @id @default(cuid())
+  provider  String   @unique // elevenlabs | twilio | whatsapp | resend | google_maps | google_calendar
+  enabled   Boolean  @default(false)
+  meta      Json?
+  updatedAt DateTime @updatedAt
+}
