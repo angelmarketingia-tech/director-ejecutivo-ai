@@ -1,5 +1,10 @@
 # NEXUS HQ — Centro de Mando Corporativo 🛰️
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+
+> Despliegue: ver **[DEPLOY.md](DEPLOY.md)**. Cómo obtener las API keys paso a paso:
+> ver **[GUIA_LLAVES.md](GUIA_LLAVES.md)**.
+
 Sala de control tipo videojuego para **toda la compañía**. Un HQ con áreas, donde cada
 área tiene **agentes autónomos** (llevan tareas de inicio a fin y **crean subagentes**
 para mejorar la calidad, no la velocidad) y, donde aplica, **personas reales** que
