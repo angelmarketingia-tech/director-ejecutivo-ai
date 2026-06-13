@@ -151,7 +151,7 @@ export function SettingsView() {
                   <p className="text-[10px] text-text-dim">
                     {p === "economica" && "Todo Haiku · máximo ahorro"}
                     {p === "equilibrada" && "Haiku (volumen) + Sonnet (calidad) — recomendada"}
-                    {p === "premium" && "Fable 5 en todo · máxima capacidad"}
+                    {p === "premium" && "Opus 4.8 en todo · máxima capacidad"}
                   </p>
                 </div>
                 <span className="stat-num shrink-0 text-[11px] text-email">

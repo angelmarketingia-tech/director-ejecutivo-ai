@@ -42,12 +42,13 @@ export const PRESETS: Record<Preset, Record<AgentId, ClaudeModel>> = {
     director: "claude-sonnet-4-6",
   },
   premium: {
-    prospect: "claude-fable-5",
-    scoring: "claude-fable-5",
-    research: "claude-fable-5",
-    email: "claude-fable-5",
-    voice: "claude-fable-5",
-    director: "claude-fable-5",
+    // Fable 5 fue suspendido (jun 2026): Premium usa Opus 4.8, el modelo más capaz disponible.
+    prospect: "claude-opus-4-8",
+    scoring: "claude-opus-4-8",
+    research: "claude-opus-4-8",
+    email: "claude-opus-4-8",
+    voice: "claude-opus-4-8",
+    director: "claude-opus-4-8",
   },
 };
 
