@@ -74,7 +74,19 @@ export function AgentTaskPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: agent.name, role: agent.role, area, task: task.trim(), subagents: specs, preset }),
       });
-      const json = await res.json();
+      // La plataforma puede devolver texto plano (timeout/crash) que NO es JSON.
+      let json: any;
+      try {
+        json = await res.json();
+      } catch {
+        setError(
+          res.status === 504 || res.status === 502
+            ? "La tarea tardó demasiado y el servidor la cortó (límite 60s). Prueba con el preset Económica (más rápido) o una tarea más corta."
+            : "El servidor devolvió una respuesta inválida. Reintenta en unos segundos."
+        );
+        setStatus("error");
+        return;
+      }
       if (json.ok) {
         setResult(json);
         setStatus("done");

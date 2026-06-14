@@ -54,12 +54,13 @@ export async function runWithSubagents<T = unknown>(opts: {
   subagents?: SubagentSpec[];
   maxTokens?: number;
 }): Promise<WithSubagentsResult<T>> {
-  // 1) Borrador
+  // 1) Borrador (effort bajo para que la corrida completa quepa en el límite de 60s)
   const draftRes = await runRaw<T>({
     system: opts.system,
     model: opts.model,
     input: opts.input,
     schema: opts.schema,
+    effort: "low",
     maxTokens: opts.maxTokens,
   });
   const draft = draftRes.data;
@@ -105,7 +106,7 @@ export async function runWithSubagents<T = unknown>(opts: {
       JSON.stringify(reports, null, 2) +
       `\n\nDevuelve la versión final mejorada que resuelve los problemas señalados.`,
     schema: opts.schema,
-    effort: "high",
+    effort: "medium",
     maxTokens: opts.maxTokens,
   });
 

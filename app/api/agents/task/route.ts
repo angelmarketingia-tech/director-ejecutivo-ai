@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       input: `Tarea (de inicio a fin): ${task}`,
       schema: DELIVERABLE_SCHEMA as unknown as Record<string, unknown>,
       subagents,
-      maxTokens: 6000,
+      maxTokens: 3500,
     });
     return NextResponse.json({ ok: true, model, budget: getBudget(), ...result });
   } catch (err: any) {
