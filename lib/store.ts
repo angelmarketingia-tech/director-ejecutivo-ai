@@ -36,6 +36,7 @@ import {
   PRESETS,
   costForStep,
 } from "@/lib/agents/pricing";
+import { IS_DEMO } from "@/lib/demoFlag";
 
 /** Forma de un lead descubierto por búsqueda web (definido aquí para no importar
  *  el módulo servidor `webprospect` en el cliente). */
@@ -249,7 +250,8 @@ function recomputeMetrics(s: {
   };
 }
 
-const initialLeads = seedLeads(14);
+// Modo real: sin leads falsos. Demo: lote inicial para demostración.
+const initialLeads = IS_DEMO ? seedLeads(14) : [];
 
 // ── Agentes de área (autónomos, con subagentes) ──
 let SUB = 1;
@@ -260,6 +262,19 @@ function buildAreaAgents(): Record<Exclude<Area, "hq">, AreaAgent[]> {
     out[area] = AREA_AGENTS_SEED[area].map((a) => {
       const tasks = AGENT_TASKS[a.name] ?? [{ task: "En espera de asignación", goal: "—" }];
       const t = tasks[0];
+      if (!IS_DEMO) {
+        // Operación real: agente en reposo hasta que se le asigne una tarea real.
+        return {
+          ...a,
+          mode: "idle",
+          task: null,
+          goal: null,
+          taskProgress: 0,
+          subagents: [],
+          completedTasks: 0,
+          qualityScore: 0,
+        } as AreaAgent;
+      }
       return {
         ...a,
         mode: "working",
@@ -363,6 +378,7 @@ function buildAgentEnabled(): Record<string, boolean> {
 }
 
 function seedStaff(): StaffMember[] {
+  if (!IS_DEMO) return []; // operación real: sin personal ficticio
   return STAFF_SEED.map((s, i) => ({
     ...s,
     activitySince: Date.now() - (3 + i * 7) * 60 * 1000 - Math.floor(Math.random() * 5 * 60 * 1000),
@@ -398,7 +414,7 @@ export const useDeck = create<DeckState>()(
   view: "deck",
   setView: (v) => set({ view: v }),
 
-  running: true,
+  running: IS_DEMO, // en operación real no hay simulación automática
   speed: 1,
   toggleRunning: () => set((s) => ({ running: !s.running })),
   setSpeed: (speed) => set({ speed }),
@@ -421,12 +437,18 @@ export const useDeck = create<DeckState>()(
   subagentsEnabled: true,
   toggleSubagents: () => set((s) => ({ subagentsEnabled: !s.subagentsEnabled })),
 
-  agents: AGENTS_SEED.map((a) => ({ ...a })),
+  agents: AGENTS_SEED.map((a) =>
+    IS_DEMO
+      ? { ...a }
+      : { ...a, status: "idle", currentTask: null, progress: 0, throughput: 0, queue: 0 }
+  ),
   leads: initialLeads,
-  events: [
-    evt("director", "info", "Sala de control inicializada · modo DEMO"),
-    evt("prospect", "info", "Estación SCOUT en línea"),
-  ],
+  events: IS_DEMO
+    ? [
+        evt("director", "info", "Sala de control inicializada · modo DEMO"),
+        evt("prospect", "info", "Estación SCOUT en línea"),
+      ]
+    : [evt("director", "info", "Operación real iniciada · sin datos cargados")],
   calls: [],
   whatsapp: [],
   emails: [],
@@ -441,6 +463,7 @@ export const useDeck = create<DeckState>()(
 
   tick: () => {
     const s = get();
+    if (!IS_DEMO) return; // operación real: no se fabrican datos
     if (!s.running) return;
 
     let leads = [...s.leads];
@@ -852,14 +875,16 @@ export const useDeck = create<DeckState>()(
     }),
 
   reset: () => {
-    const leads = seedLeads(14);
+    const leads = IS_DEMO ? seedLeads(14) : [];
     set({
       leads,
       calls: [],
       whatsapp: [],
       emails: [],
-      events: [evt("director", "info", "Simulación reiniciada")],
-      agents: AGENTS_SEED.map((a) => ({ ...a })),
+      events: [evt("director", "info", IS_DEMO ? "Simulación reiniciada" : "Datos reiniciados")],
+      agents: AGENTS_SEED.map((a) =>
+        IS_DEMO ? { ...a } : { ...a, status: "idle", currentTask: null, progress: 0, throughput: 0, queue: 0 }
+      ),
       areaAgents: buildAreaAgents(),
       staff: seedStaff(),
       usedToday: { emails: 0, whatsapp: 0, calls: 0, spendUsd: 0 },

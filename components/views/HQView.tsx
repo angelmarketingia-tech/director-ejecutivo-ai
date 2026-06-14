@@ -129,6 +129,11 @@ export function HQView() {
             <p className="text-[13px] font-semibold text-text">Actividad reciente del equipo</p>
           </div>
           <div className="flex flex-col gap-1 p-2">
+            {recent.length === 0 && (
+              <p className="px-3 py-6 text-center text-[11px] text-text-dim">
+                Aún sin actividad. Da de alta a tu equipo en Recursos Humanos.
+              </p>
+            )}
             {recent.map((p) => (
               <div key={p.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
                 <div

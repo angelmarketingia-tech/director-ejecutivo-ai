@@ -7,6 +7,7 @@ import { DeptStation } from "@/components/deck/DeptStation";
 import { StaffCard } from "@/components/StaffCard";
 import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
+import { IS_DEMO } from "@/lib/demoFlag";
 import { Megaphone, GitBranch, Sparkles, Users, Briefcase, Building2 } from "lucide-react";
 
 const SERVICES = [
@@ -91,7 +92,10 @@ export function MarketingView() {
                 </tr>
               </thead>
               <tbody>
-                {CAMPAIGNS.map((c) => (
+                {!IS_DEMO && (
+                  <tr><td colSpan={5} className="px-4 py-6 text-center text-[12px] text-text-dim">Sin campañas aún · crea una en Configuración</td></tr>
+                )}
+                {(IS_DEMO ? CAMPAIGNS : []).map((c) => (
                   <tr key={c.name} className="border-b border-border/60 hover:bg-surface/60">
                     <td className="px-4 py-2.5 font-medium text-text">{c.name}</td>
                     <td className="px-4 py-2.5 text-text-muted">{c.channel}</td>
@@ -112,7 +116,7 @@ export function MarketingView() {
           <div className="panel overflow-x-auto p-4">
             <p className="label-eyebrow mb-3">Calendario de contenidos · esta semana</p>
             <div className="grid grid-cols-7 gap-2 min-w-[520px] sm:min-w-0">
-              {CALENDAR.map((d) => (
+              {(IS_DEMO ? CALENDAR : CALENDAR.map((d) => ({ ...d, items: [] as string[] }))).map((d) => (
                 <div key={d.day} className="rounded-lg border border-border bg-bg-soft/50 p-2">
                   <p className="mb-1.5 text-[10px] font-semibold uppercase text-text-dim">{d.day}</p>
                   <div className="space-y-1">

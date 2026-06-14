@@ -3,6 +3,7 @@
 import { useDeck } from "@/lib/store";
 import { cn, fmtMoney } from "@/lib/utils";
 import { AREA_BY_ID } from "@/lib/departments";
+import { IS_DEMO } from "@/lib/demoFlag";
 import { Play, Pause, RotateCcw, Gauge, Sparkles, Menu } from "lucide-react";
 
 const SPEEDS = [1, 2, 4];
@@ -54,11 +55,17 @@ export function Topbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <span className="chip hidden border-warn/30 bg-warn/10 text-warn sm:inline-flex">
-          <Sparkles className="h-3 w-3" /> Modo Demo
-        </span>
+        {IS_DEMO ? (
+          <span className="chip hidden border-warn/30 bg-warn/10 text-warn sm:inline-flex">
+            <Sparkles className="h-3 w-3" /> Modo Demo
+          </span>
+        ) : (
+          <span className="chip hidden border-ok/30 bg-ok/10 text-ok sm:inline-flex">
+            <Sparkles className="h-3 w-3" /> Operación real
+          </span>
+        )}
 
-        <div className="hidden items-center gap-1 rounded-lg border border-border bg-surface/60 p-1 sm:flex">
+        <div className={`${IS_DEMO ? "hidden sm:flex" : "hidden"} items-center gap-1 rounded-lg border border-border bg-surface/60 p-1`}>
           <Gauge className="ml-1 h-3.5 w-3.5 text-text-dim" />
           {SPEEDS.map((s) => (
             <button

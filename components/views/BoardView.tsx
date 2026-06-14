@@ -8,6 +8,7 @@ import { StaffCard } from "@/components/StaffCard";
 import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
 import { fmtMoney } from "@/lib/utils";
+import { IS_DEMO } from "@/lib/demoFlag";
 import { CalendarClock, CheckCircle2, TrendingUp, Megaphone, Code2, Target, Users } from "lucide-react";
 
 export function BoardView() {
@@ -32,17 +33,21 @@ export function BoardView() {
     { label: "Personas activas", value: `${staff.filter((p) => p.presence !== "offline").length}`, icon: Users, tint: "#A78BFA" },
   ];
 
-  const juntas = [
-    { title: "Comité de dirección semanal", when: "Hoy 16:00", owner: "Jorge Luna (CEO)", icon: CalendarClock },
-    { title: "Revisión de crecimiento — Marketing", when: "Mañana 10:00", owner: "Ana Reyes", icon: Megaphone },
-    { title: "Demo de release v1.4 — Ingeniería", when: "Jue 11:30", owner: "Lucía Pérez", icon: Code2 },
-  ];
+  const juntas = IS_DEMO
+    ? [
+        { title: "Comité de dirección semanal", when: "Hoy 16:00", owner: "Jorge Luna (CEO)", icon: CalendarClock },
+        { title: "Revisión de crecimiento — Marketing", when: "Mañana 10:00", owner: "Ana Reyes", icon: Megaphone },
+        { title: "Demo de release v1.4 — Ingeniería", when: "Jue 11:30", owner: "Lucía Pérez", icon: Code2 },
+      ]
+    : [];
 
-  const decisions = [
-    { text: "Aprobada inversión en pauta Q3 (+18% presupuesto)", by: "Directiva", tint: "#34D399" },
-    { text: "Prioridad a integración de pagos antes del cierre de trimestre", by: "HELM + COO", tint: "#A78BFA" },
-    { text: "Escalado a humano de 3 cuentas enterprise calientes", by: "ATLAS → Directiva", tint: "#FB7185" },
-  ];
+  const decisions = IS_DEMO
+    ? [
+        { text: "Aprobada inversión en pauta Q3 (+18% presupuesto)", by: "Directiva", tint: "#34D399" },
+        { text: "Prioridad a integración de pagos antes del cierre de trimestre", by: "HELM + COO", tint: "#A78BFA" },
+        { text: "Escalado a humano de 3 cuentas enterprise calientes", by: "ATLAS → Directiva", tint: "#FB7185" },
+      ]
+    : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -80,6 +85,7 @@ export function BoardView() {
               <div className="panel-tight p-4">
                 <p className="label-eyebrow mb-2">Próximas juntas</p>
                 <div className="space-y-2">
+                  {juntas.length === 0 && <p className="text-[11px] text-text-dim">Sin juntas programadas</p>}
                   {juntas.map((j) => (
                     <div key={j.title} className="flex items-start gap-2.5 rounded-lg border border-border bg-bg-soft/50 px-3 py-2">
                       <j.icon className="mt-0.5 h-4 w-4 shrink-0 text-director" />
@@ -100,6 +106,7 @@ export function BoardView() {
               <p className="text-[13px] font-semibold text-text">Registro de decisiones</p>
             </div>
             <div className="divide-y divide-border/60">
+              {decisions.length === 0 && <p className="px-4 py-5 text-center text-[12px] text-text-dim">Sin decisiones registradas</p>}
               {decisions.map((d) => (
                 <div key={d.text} className="flex items-center gap-3 px-4 py-3">
                   <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: d.tint }} />
