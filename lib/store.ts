@@ -48,6 +48,9 @@ export interface DiscoveredLeadInput {
   socials: string[];
   evidenceUrl: string | null;
   audienceNote: string | null;
+  /** Contacto real (lo da Apify; la búsqueda web puede no traerlo). */
+  phone?: string | null;
+  email?: string | null;
 }
 
 type View =
@@ -638,10 +641,10 @@ export const useDeck = create<DeckState>()(
           category: it.category ?? "Negocio",
           city: it.city ?? "",
           country: "",
-          // Contacto NO inventado: se deja vacío hasta enriquecer con fuentes/Places.
+          // Contacto: solo si la fuente lo trae (Apify); nunca inventado.
           contactName: undefined,
-          phone: undefined,
-          email: undefined,
+          phone: it.phone ?? undefined,
+          email: it.email ?? undefined,
           website: it.website,
           hasWebsite,
           digitalScore,

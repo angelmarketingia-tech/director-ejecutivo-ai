@@ -14,14 +14,16 @@ function WebProspect() {
   const addDiscoveredLeads = useDeck((s) => s.addDiscoveredLeads);
   const [niche, setNiche] = useState("restaurantes");
   const [city, setCity] = useState("Quito");
+  const [source, setSource] = useState<"web" | "apify">("web");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function search() {
     setLoading(true);
     setMsg(null);
+    const endpoint = source === "apify" ? "/api/leads/apify" : "/api/leads/discover";
     try {
-      const r = await fetch("/api/leads/discover", {
+      const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ niche, city, count: 8 }),
@@ -31,11 +33,13 @@ function WebProspect() {
         const added = addDiscoveredLeads(j.leads || []);
         setMsg(
           added > 0
-            ? `✅ ${added} negocios REALES añadidos (con fuente verificable). Ábrelos en Leads.`
-            : "No se hallaron negocios reales verificables. Prueba otro nicho/ciudad."
+            ? `✅ ${added} negocios REALES añadidos${source === "apify" ? " (con teléfono/web)" : " (con fuente verificable)"}. Ábrelos en Leads.`
+            : "No se hallaron negocios reales. Prueba otro nicho/ciudad."
         );
       } else if (j.noKey) {
         setMsg("⚠️ Falta ANTHROPIC_API_KEY: no busco datos reales ni invento nada.");
+      } else if (j.noToken) {
+        setMsg("⚠️ Falta APIFY_TOKEN en Vercel para usar Apify.");
       } else if (j.budgetExceeded) {
         setMsg("⛔ Tope de gasto diario alcanzado. Súbelo en Configuración.");
       } else {
@@ -49,10 +53,25 @@ function WebProspect() {
 
   return (
     <div className="panel p-3">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <Globe className="h-4 w-4 text-prospect" />
-        <p className="text-[12px] font-semibold text-text">Buscar leads REALES por internet</p>
-        <span className="text-[10px] text-text-dim">(búsqueda web con fuente · sin invenciones)</span>
+        <p className="text-[12px] font-semibold text-text">Buscar leads REALES</p>
+        <div className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-surface/60 p-0.5">
+          <button
+            data-testid="src-web"
+            onClick={() => setSource("web")}
+            className={`rounded-md px-2 py-1 text-[10px] font-semibold ${source === "web" ? "bg-prospect/20 text-prospect" : "text-text-dim"}`}
+          >
+            Web (Claude)
+          </button>
+          <button
+            data-testid="src-apify"
+            onClick={() => setSource("apify")}
+            className={`rounded-md px-2 py-1 text-[10px] font-semibold ${source === "apify" ? "bg-prospect/20 text-prospect" : "text-text-dim"}`}
+          >
+            Apify (tel/email)
+          </button>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <input
