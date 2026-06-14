@@ -83,7 +83,7 @@ test("UX · flujo de lead: abrir, escalar, ejecutar pipeline en lead fresco, Esc
   await expect(page.getByTestId("lead-stage")).toBeVisible();
   await page.getByTestId("btn-escalate").click();
   await page.getByTestId("btn-run-pipeline").click();
-  await expect(page.getByTestId("lead-stage")).toHaveText(/Cerrado|Perdido/);
+  await expect(page.getByTestId("lead-stage")).toHaveText(/Calificado/);
   await page.keyboard.press("Escape"); // cierra el drawer
   await expect(page.getByTestId("lead-stage")).toHaveCount(0);
   await assertClean(errors);

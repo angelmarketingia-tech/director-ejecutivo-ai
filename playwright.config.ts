@@ -35,5 +35,7 @@ export default defineConfig({
     url: "http://localhost:3100",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Los E2E prueban la UI con el lote demo (modo real arranca vacío).
+    env: { NEXT_PUBLIC_DEMO_MODE: "true" },
   },
 });

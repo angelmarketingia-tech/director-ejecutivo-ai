@@ -23,6 +23,7 @@ import {
   generateLead,
   seedLeads,
   STAGE_ORDER,
+  STAGE_LABEL,
 } from "@/lib/demo/data";
 import {
   AREA_AGENTS_SEED,
@@ -30,12 +31,7 @@ import {
   STAFF_SEED,
   SUBAGENT_PLAYBOOK,
 } from "@/lib/departments";
-import {
-  type Preset,
-  type ChannelsMode,
-  PRESETS,
-  costForStep,
-} from "@/lib/agents/pricing";
+import { type Preset, type ChannelsMode } from "@/lib/agents/pricing";
 import { IS_DEMO } from "@/lib/demoFlag";
 
 /** Forma de un lead descubierto por búsqueda web (definido aquí para no importar
@@ -127,14 +123,20 @@ interface DeckState {
   /** Carga los leads guardados en el servidor (cross-device) al entrar. */
   loadServerLeads: () => Promise<void>;
   /**
-   * Ejecuta el pipeline COMPLETO sobre un lead: investigación → scoring → contacto
-   * (email/llamada reales) → decisión de avance → cierre (ganado/perdido).
-   * El desenlace se decide por los ATRIBUTOS REALES del lead (score, closeProbability),
-   * con un evento trazable por cada paso. Devuelve la etapa final.
+   * Prepara un lead para el contacto, SIN inventar nada que no haya pasado:
+   * 1) Investiga (deriva necesidades de los datos reales del negocio),
+   * 2) Califica (score/temperatura a partir de señales reales),
+   * 3) Redacta un BORRADOR de mensaje listo para que TÚ lo envíes.
+   * Se detiene en "Calificado". No envía emails, no hace llamadas, no cierra
+   * tratos solo. Devuelve la etapa final (normalmente "qualified").
    */
   runLeadPipeline: (id: string) => PipelineStage;
-  /** Corre el pipeline completo sobre todos los leads abiertos. Devuelve cuántos cerró. */
-  closeAllOpen: () => { won: number; lost: number };
+  /** Investiga + califica + prepara mensaje en todos los leads abiertos. */
+  closeAllOpen: () => { processed: number; qualified: number };
+  /** Registras TÚ que ya enviaste el contacto (lo marcas como hecho de verdad). */
+  markContacted: (id: string) => void;
+  /** Mueves manualmente un lead a una etapa real (interesado/reunión/ganado/perdido). */
+  advanceLead: (id: string, stage: PipelineStage) => void;
   /** Marca un lead para revisión/cierre humano. */
   escalateLead: (id: string) => void;
 }
@@ -214,6 +216,36 @@ const evt = (
 });
 
 const rnd = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+
+/**
+ * Construye un mensaje de contacto REAL (texto listo para enviar) a partir de los
+ * datos del lead. No es una conversación simulada: es un borrador que TÚ envías.
+ */
+function buildOutreach(lead: Lead): NonNullable<Lead["outreach"]> {
+  const first = lead.contactName?.split(" ")[0];
+  const hi = first ? `Hola ${first}` : "Hola";
+  const ref =
+    lead.rating && lead.reviews
+      ? `vi ${lead.company} en Google (${lead.rating}★, ${lead.reviews} reseñas)`
+      : `vi ${lead.company}`;
+  let message: string;
+  if (!lead.hasWebsite) {
+    message =
+      `${hi} 👋, ${ref} y noté que aún no tienen página web propia. ` +
+      `Hoy casi todos los clientes buscan por internet antes de decidir, y sin web esas visitas se pierden. ` +
+      `Hago sitios sencillos (menú/catálogo, fotos, ubicación y botón directo a WhatsApp) para negocios de ${lead.city}. ` +
+      `¿Le comparto un ejemplo de cómo se vería el de ${lead.company}?`;
+  } else {
+    message =
+      `${hi} 👋, ${ref}. Revisé su sitio web y tengo 2 mejoras concretas para que aparezca mejor en Google ` +
+      `y convierta más visitas en clientes (velocidad en celular, contacto/reservas y posicionamiento local). ` +
+      `¿Le interesa que se las muestre sin compromiso?`;
+  }
+  const channel: "whatsapp" | "email" = lead.phone ? "whatsapp" : "email";
+  const subject = `${lead.company}: más clientes con una web profesional`;
+  return { channel, subject, message, preparedAt: Date.now() };
+}
+
 const stageNext = (s: PipelineStage): PipelineStage => {
   const i = STAGE_ORDER.indexOf(s);
   return i < 0 || i >= STAGE_ORDER.length - 1 ? s : STAGE_ORDER[i + 1];
@@ -728,164 +760,135 @@ export const useDeck = create<DeckState>()(
     const idx = s.leads.findIndex((l) => l.id === id);
     if (idx < 0) return "lost";
 
-    const caps = s.dailyCaps;
-    const used = { ...s.usedToday };
-    const models = PRESETS[s.preset];
-    const en = s.agentEnabled; // agentes encendidos (los apagados no consumen API)
-
     let lead = { ...s.leads[idx] };
+    // No re-procesar resultados que TÚ ya marcaste (ganado/perdido).
+    if (lead.stage === "won" || lead.stage === "lost") return lead.stage;
+
+    const en = s.agentEnabled; // agentes encendidos
     let events = [...s.events];
-    let emails = [...s.emails];
-    let calls = [...s.calls];
-    let whatsapp = [...s.whatsapp];
     const push = (agent: AgentId, level: ActivityEvent["level"], message: string) => {
       events = [evt(agent, level, message), ...events].slice(0, 80);
     };
-    // Suma gasto estimado del paso al consumo del día
-    const spend = (agent: AgentId) => {
-      used.spendUsd += costForStep(agent, models[agent]);
-    };
 
-    // GUARDA DE PRESUPUESTO: si ya se alcanzó el tope diario, no se procesa.
-    if (used.spendUsd >= caps.spendUsd) {
-      push("director", "warn", `⛔ Tope de gasto diario ($${caps.spendUsd}) alcanzado · ${lead.company} en espera`);
-      set({ events });
-      return lead.stage;
-    }
-
-    // 1) Investigación (ORACLE) — solo si el agente está encendido
+    // 1) Investigación (ORACLE) — deriva necesidades de DATOS REALES, sin inventar.
     lead.stage = "researched";
     lead.ownerAgent = "research";
     if (!lead.hasWebsite && !lead.needs.includes("Sitio web profesional")) {
       lead.needs = ["Sitio web profesional", ...lead.needs];
     }
     if (en.research !== false) {
-      spend("research");
-      push("research", "info", `ORACLE: ${lead.company} · rating ${lead.rating}★ · presencia ${lead.digitalScore}/100`);
+      push(
+        "research",
+        "info",
+        `ORACLE investigó ${lead.company} · ${lead.hasWebsite ? "tiene web" : "sin web"}${lead.rating ? ` · ${lead.rating}★` : ""}`
+      );
     }
 
-    // 2) Scoring (FORGE)
+    // 2) Calificación (FORGE) — score/temperatura a partir de señales reales del lead.
     lead.stage = "qualified";
     lead.ownerAgent = "scoring";
-    lead.nextAction = lead.temperature === "hot" ? "Llamar hoy" : "Email + seguimiento";
+    lead.nextAction = "Enviar mensaje preparado";
     if (en.scoring !== false) {
-      spend("scoring");
-      push("scoring", lead.temperature === "hot" ? "alert" : "info", `FORGE: score ${lead.score} → ${lead.temperature.toUpperCase()} (cierre ${lead.closeProbability}%)`);
+      push(
+        "scoring",
+        lead.temperature === "hot" ? "alert" : "info",
+        `FORGE calificó ${lead.company}: score ${lead.score} · ${lead.temperature.toUpperCase()}`
+      );
     }
 
-    // 3) Contacto — email (respeta tope) + WhatsApp; llamada solo en modo completo
-    lead.stage = "contacted";
-    lead.consent = "soft_optin";
-    if (en.email !== false && used.emails < caps.emails) {
-      const email: EmailRecord = {
-        id: `em_${emails.length + 1}_${lead.id}`,
-        leadId: lead.id,
-        company: lead.company,
-        subject: `${lead.company}: más clientes con ${lead.needs[0]?.toLowerCase()}`,
-        template: lead.hasWebsite ? "mejora_presencia" : "sin_web",
-        status: "sent",
-        at: Date.now(),
-      };
-      emails = [email, ...emails].slice(0, 200);
-      used.emails += 1;
-      spend("email");
-      push("email", "success", `QUILL → email enviado a ${lead.company}`);
-    } else {
-      push("email", "warn", `Tope de emails (${caps.emails}) alcanzado · ${lead.company} sin email`);
-    }
-
-    if (used.whatsapp < caps.whatsapp) {
-      const wa: WhatsAppMessage = {
-        id: `wa_${whatsapp.length + 1}_${lead.id}`,
-        leadId: lead.id,
-        company: lead.company,
-        direction: "out",
-        body: `Hola ${lead.contactName?.split(" ")[0] ?? ""}, te escribimos sobre ${lead.needs[0]?.toLowerCase()} 👋`,
-        status: "delivered",
-        templateName: "intro_optin",
-        at: Date.now(),
-      };
-      whatsapp = [wa, ...whatsapp].slice(0, 200);
-      used.whatsapp += 1;
-      push("email", "info", `WhatsApp → ${lead.company}`);
-    }
-
-    const voiceOn = s.channelsMode === "full" && en.voice !== false;
-    if (lead.temperature === "hot" && voiceOn && used.calls < caps.calls) {
-      const booked = lead.closeProbability >= 50;
-      const call: CallRecord = {
-        id: `cl_${calls.length + 1}_${lead.id}`,
-        leadId: lead.id,
-        company: lead.company,
-        durationSec: 90 + Math.floor(lead.closeProbability * 3),
-        outcome: booked ? "meeting_booked" : "connected",
-        interest: lead.score >= 70 ? "high" : "medium",
-        objections: lead.closeProbability < 50 ? ["Precio"] : [],
-        nextStep: booked ? "Reunión agendada" : "Enviar propuesta",
-        followUpAt: Date.now() + 1000 * 60 * 60 * 24,
-        closeProbability: lead.closeProbability,
-        transcriptSnippet: "«Cuéntame cómo me ayudarían a conseguir más clientes…»",
-        at: Date.now(),
-      };
-      calls = [call, ...calls].slice(0, 200);
-      used.calls += 1;
-      spend("voice");
-      push("voice", "alert", `ECHO → llamada a ${lead.company}: ${call.outcome}`);
-    } else if (lead.temperature === "hot" && !voiceOn) {
-      push("voice", "info", `Modo sin voz · ${lead.company} se atiende por email/WhatsApp`);
-    }
-
-    // 4) Decisión de avance/cierre — DETERMINISTA por atributos reales del lead
-    spend("director");
-    if (lead.score < 45) {
-      lead.stage = "lost";
-      push("director", "warn", `✕ ${lead.company} perdido: score ${lead.score} bajo el umbral (45)`);
-    } else {
-      lead.stage = "engaged";
-      lead.consent = "opt_in";
-      push("director", "alert", `🔥 ${lead.company} muestra interés (score ${lead.score})`);
-
-      if (lead.score >= 55) {
-        lead.stage = "meeting";
-        push("voice", "success", `Reunión agendada con ${lead.company}`);
-        if (lead.closeProbability >= 50) {
-          lead.stage = "won";
-          push("director", "success", `✅ CIERRE ganado: ${lead.company} (cierre ${lead.closeProbability}%)`);
-        } else {
-          lead.stage = "lost";
-          push("director", "warn", `✕ ${lead.company} perdido tras reunión: cierre ${lead.closeProbability}% < 50%`);
-        }
-      } else {
-        lead.stage = "lost";
-        push("director", "warn", `✕ ${lead.company} perdido: interés insuficiente (score ${lead.score} < 55)`);
-      }
+    // 3) Preparación del contacto (QUILL) — BORRADOR real, listo para que TÚ lo envíes.
+    //    NO se envía nada, NO se simula respuesta del cliente, NO se cierra el trato.
+    lead.outreach = buildOutreach(lead);
+    if (en.email !== false) {
+      push("email", "success", `QUILL preparó el mensaje para ${lead.company} · listo para enviar (no enviado)`);
     }
 
     const leads = [...s.leads];
     leads[idx] = lead;
-    set({
-      leads,
-      events,
-      emails,
-      calls,
-      whatsapp,
-      usedToday: used,
-      metrics: recomputeMetrics({ leads, emails, whatsapp, calls }),
-    });
+    set({ leads, events });
     return lead.stage;
   },
 
   closeAllOpen: () => {
     const open = get().leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
-    let won = 0;
-    let lost = 0;
+    let qualified = 0;
     for (const l of open) {
       const end = get().runLeadPipeline(l.id);
-      if (end === "won") won++;
-      else if (end === "lost") lost++;
+      if (end === "qualified") qualified++;
     }
-    return { won, lost };
+    return { processed: open.length, qualified };
   },
+
+  markContacted: (id) =>
+    set((s) => {
+      const idx = s.leads.findIndex((l) => l.id === id);
+      if (idx < 0) return {} as Partial<DeckState>;
+      const lead = { ...s.leads[idx] };
+      lead.stage = "contacted";
+      lead.consent = "soft_optin";
+      if (lead.outreach) lead.outreach = { ...lead.outreach, sentAt: Date.now() };
+      const leads = [...s.leads];
+      leads[idx] = lead;
+
+      // Registro REAL del envío que TÚ hiciste (no fabricado por el sistema).
+      const used = { ...s.usedToday };
+      let emails = s.emails;
+      let whatsapp = s.whatsapp;
+      if (lead.outreach?.channel === "email") {
+        const email: EmailRecord = {
+          id: `em_${s.emails.length + 1}_${lead.id}`,
+          leadId: lead.id,
+          company: lead.company,
+          subject: lead.outreach.subject ?? lead.company,
+          template: "manual",
+          status: "sent",
+          at: Date.now(),
+        };
+        emails = [email, ...s.emails].slice(0, 200);
+        used.emails += 1;
+      } else {
+        const wa: WhatsAppMessage = {
+          id: `wa_${s.whatsapp.length + 1}_${lead.id}`,
+          leadId: lead.id,
+          company: lead.company,
+          direction: "out",
+          body: lead.outreach?.message ?? "",
+          status: "sent",
+          templateName: "manual",
+          at: Date.now(),
+        };
+        whatsapp = [wa, ...s.whatsapp].slice(0, 200);
+        used.whatsapp += 1;
+      }
+
+      return {
+        leads,
+        emails,
+        whatsapp,
+        usedToday: used,
+        events: [evt("director", "success", `Contacto registrado por ti: ${lead.company}`), ...s.events].slice(0, 80),
+        metrics: recomputeMetrics({ leads, emails, whatsapp, calls: s.calls }),
+      };
+    }),
+
+  advanceLead: (id, stage) =>
+    set((s) => {
+      const idx = s.leads.findIndex((l) => l.id === id);
+      if (idx < 0) return {} as Partial<DeckState>;
+      const lead = { ...s.leads[idx], stage };
+      const leads = [...s.leads];
+      leads[idx] = lead;
+      const level: ActivityEvent["level"] =
+        stage === "won" ? "success" : stage === "lost" ? "warn" : "info";
+      return {
+        leads,
+        events: [
+          evt("director", level, `${lead.company} → ${STAGE_LABEL[stage]} (marcado por ti)`),
+          ...s.events,
+        ].slice(0, 80),
+        metrics: recomputeMetrics({ leads, emails: s.emails, whatsapp: s.whatsapp, calls: s.calls }),
+      };
+    }),
 
   escalateLead: (id) =>
     set((s) => {

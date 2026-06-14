@@ -51,19 +51,24 @@ con `Sin web` y les sube el score.
 1. **Prospectar (5 min).** Comercial → Sala de Control → **"Buscar leads REALES"**:
    - Fuente **Google Places (tel)** → nicho + ciudad → trae ~20 con teléfono.
    - Repite con 2–3 nichos/zonas distintos → **~40–50 leads/día**.
-2. **Calificar (2 min).** Pulsa **"Ejecutar pipeline de todos"** → el Director (ATLAS)
-   investiga, puntúa y marca **calientes** (sin web + buenas reseñas = score alto).
-3. **Contactar los calientes (20 min):**
-   - **Email/WhatsApp:** abre el lead → el agente QUILL redacta el mensaje (promesa +
-     oferta + CTA). Revísalo y envíalo. Personaliza 1 línea.
-   - **Llamada:** a los más calientes, llámalos tú (o usa el agente de voz). El guion
-     lo prepara ECHO.
+2. **Investigar y calificar (2 min).** Pulsa **"Investigar y calificar todos"** → el
+   sistema investiga, puntúa, marca **calientes** (sin web + buenas reseñas = score alto)
+   y **deja un borrador de mensaje listo** en cada lead. *No envía nada ni inventa
+   respuestas: solo prepara.*
+3. **Contactar los calientes (20 min) — lo haces TÚ:**
+   - Abre el lead → verás el **mensaje preparado**. Pulsa **"Abrir WhatsApp"** (o
+     **Copiar** / **Email**). Personaliza 1 línea y envíalo desde tu propio WhatsApp.
+   - ¿Quieres un ángulo más fino para un lead clave? Pulsa **"Investigar con IA"**:
+     ORACLE (Claude) analiza el negocio real y te da gancho + brechas.
    - **Oferta ganadora:** "Te hago un **mockup/demo gratis** de tu web" o "**diagnóstico
      gratis** de tu presencia digital". Baja la fricción.
-4. **Seguimiento (10 min):** revisa los **tibios** de días anteriores y dales el 2º/3er
-   toque. Aquí están la mayoría de tus ventas.
+4. **Registrar lo que pasó (1 min):** cuando de verdad envíes/cierres, en el lead marca
+   **Contactado / Ganado / Perdido**. Esto mantiene tus métricas REALES (sin datos falsos).
+5. **Seguimiento (10 min):** revisa los **tibios** de días anteriores y dales el 2º/3er toque.
 
 > Meta diaria: **40–50 prospectados, ~15–20 contactados, 3–5 seguimientos.**
+> Importante: el sistema **nunca** marca llamadas, conversaciones ni cierres por su cuenta.
+> Todo lo que veas en Llamadas/WhatsApp/Cierres lo registraste **tú** (datos reales).
 
 ---
 

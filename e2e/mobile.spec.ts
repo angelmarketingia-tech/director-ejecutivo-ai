@@ -83,7 +83,7 @@ test("MÓVIL · flujo real: generar lead y cerrar pipeline sin errores", async (
   await page.getByTestId("btn-generar-lead").click();
   await expect(page.getByTestId("metric-leads")).toHaveText(String(before + 1));
   await page.getByTestId("btn-cerrar-pipeline").click();
-  await expect(page.getByTestId("control-result")).toContainText(/ganados/);
+  await expect(page.getByTestId("control-result")).toContainText(/investigados y calificados|No hay leads/);
   expect(realErrors(errors), realErrors(errors).join("\n")).toEqual([]);
 });
 

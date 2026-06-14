@@ -78,6 +78,18 @@ export interface Lead {
   socials?: string[];
   /** true = datos obtenidos de una fuente real (no simulado). */
   verified?: boolean;
+  /**
+   * Mensaje de contacto PREPARADO por el sistema (texto real, listo para enviar).
+   * NO se envía solo: tú lo copias/abres en WhatsApp o email. `sentAt` lo marcas
+   * cuando de verdad lo enviaste.
+   */
+  outreach?: {
+    channel: "whatsapp" | "email";
+    subject?: string;
+    message: string;
+    preparedAt: number;
+    sentAt?: number;
+  };
 }
 
 export type ChannelType = "email" | "whatsapp" | "call";

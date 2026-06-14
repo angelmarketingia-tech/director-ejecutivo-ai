@@ -139,11 +139,15 @@ function ControlBar() {
         data-testid="btn-cerrar-pipeline"
         onClick={() => {
           const r = closeAllOpen();
-          setResult(`Pipeline ejecutado: ${r.won} ganados · ${r.lost} perdidos`);
+          setResult(
+            r.processed === 0
+              ? "No hay leads abiertos. Busca leads reales primero."
+              : `${r.qualified} de ${r.processed} leads investigados y calificados · mensajes listos para enviar (ábrelos en cada lead)`
+          );
         }}
         className="flex items-center gap-2 rounded-lg border border-director/30 bg-director/10 px-3 py-2 text-[12px] font-semibold text-director transition-colors hover:bg-director/20"
       >
-        <Zap className="h-3.5 w-3.5" /> Ejecutar pipeline de todos
+        <Zap className="h-3.5 w-3.5" /> Investigar y calificar todos
       </button>
       {result && (
         <span data-testid="control-result" className="text-[11px] text-text-muted">

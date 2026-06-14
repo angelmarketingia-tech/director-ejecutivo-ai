@@ -19,6 +19,12 @@ import {
   ShieldAlert,
   Microscope,
   Loader2,
+  Copy,
+  Check,
+  MessageCircle,
+  Send,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 interface ResearchData {
@@ -36,18 +42,33 @@ export function LeadDrawer() {
   const close = useDeck((s) => s.selectLead);
   const runLeadPipeline = useDeck((s) => s.runLeadPipeline);
   const escalateLead = useDeck((s) => s.escalateLead);
+  const markContacted = useDeck((s) => s.markContacted);
+  const advanceLead = useDeck((s) => s.advanceLead);
   const done = lead && (lead.stage === "won" || lead.stage === "lost");
   useEscape(!!lead, () => close(null));
 
   const [researching, setResearching] = useState(false);
   const [research, setResearch] = useState<ResearchData | null>(null);
   const [researchMsg, setResearchMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyDraft() {
+    if (!lead?.outreach) return;
+    try {
+      await navigator.clipboard.writeText(lead.outreach.message);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard no disponible */
+    }
+  }
 
   // Reinicia la investigación al cambiar de lead
   useEffect(() => {
     setResearch(null);
     setResearchMsg(null);
     setResearching(false);
+    setCopied(false);
   }, [id]);
 
   async function investigate() {
@@ -237,6 +258,55 @@ export function LeadDrawer() {
                 </Section>
               )}
 
+              {/* Mensaje preparado (borrador real, listo para enviar) */}
+              {lead.outreach && (
+                <Section title="Mensaje preparado · listo para enviar">
+                  <div className="rounded-lg border border-email/40 bg-email/10 p-3">
+                    {lead.outreach.sentAt ? (
+                      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-ok">
+                        <Check className="h-3.5 w-3.5" /> Marcado como enviado por ti
+                      </p>
+                    ) : (
+                      <p className="mb-2 text-[10px] uppercase tracking-wide text-email">
+                        Borrador — no se ha enviado solo
+                      </p>
+                    )}
+                    <p data-testid="outreach-message" className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-text">
+                      {lead.outreach.message}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        data-testid="btn-copy-draft"
+                        onClick={copyDraft}
+                        className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted transition-colors hover:text-text"
+                      >
+                        {copied ? <Check className="h-3.5 w-3.5 text-ok" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied ? "Copiado" : "Copiar"}
+                      </button>
+                      {lead.phone && (
+                        <a
+                          data-testid="btn-open-whatsapp"
+                          href={`https://wa.me/${lead.phone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(lead.outreach.message)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 rounded-lg border border-email/30 bg-email/15 px-2.5 py-1.5 text-[11px] font-semibold text-email transition-colors hover:bg-email/25"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> Abrir WhatsApp
+                        </a>
+                      )}
+                      {lead.email && (
+                        <a
+                          href={`mailto:${lead.email}?subject=${encodeURIComponent(lead.outreach.subject ?? "")}&body=${encodeURIComponent(lead.outreach.message)}`}
+                          className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted transition-colors hover:text-text"
+                        >
+                          <Mail className="h-3.5 w-3.5" /> Email
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </Section>
+              )}
+
               {/* Consentimiento */}
               <Section title="Cumplimiento">
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-surface/60 px-3 py-2.5 text-[12px]">
@@ -275,20 +345,50 @@ export function LeadDrawer() {
                 onClick={() => runLeadPipeline(lead.id)}
                 className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-prospect/15 py-2.5 text-[13px] font-semibold text-prospect transition-colors hover:bg-prospect/25 disabled:opacity-40"
               >
-                {done ? `Pipeline finalizado · ${STAGE_LABEL[lead.stage]}` : "Ejecutar pipeline completo"}
+                {done
+                  ? `Cerrado · ${STAGE_LABEL[lead.stage]}`
+                  : lead.outreach
+                    ? "Volver a preparar mensaje"
+                    : "Investigar y preparar mensaje"}
               </button>
-              <div className="grid grid-cols-2 gap-2">
-                <button className="rounded-lg border border-border bg-surface py-2.5 text-[12px] font-semibold text-text-muted transition-colors hover:text-text">
-                  Programar seguimiento
+
+              {/* Desenlace REAL — lo registras tú según lo que de verdad pase */}
+              <p className="mb-1.5 mt-1 text-[10px] uppercase tracking-wide text-text-dim">
+                Registrar lo que pasó de verdad
+              </p>
+              <div className="mb-2 grid grid-cols-3 gap-2">
+                <button
+                  data-testid="btn-mark-contacted"
+                  disabled={!!done}
+                  onClick={() => markContacted(lead.id)}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-email/30 bg-email/10 py-2 text-[11px] font-semibold text-email transition-colors hover:bg-email/20 disabled:opacity-40"
+                >
+                  <Send className="h-3.5 w-3.5" /> Contactado
                 </button>
                 <button
-                  data-testid="btn-escalate"
-                  onClick={() => escalateLead(lead.id)}
-                  className="rounded-lg bg-hot/15 py-2.5 text-[12px] font-semibold text-hot transition-colors hover:bg-hot/25"
+                  data-testid="btn-mark-won"
+                  disabled={!!done}
+                  onClick={() => advanceLead(lead.id, "won")}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-ok/30 bg-ok/10 py-2 text-[11px] font-semibold text-ok transition-colors hover:bg-ok/20 disabled:opacity-40"
                 >
-                  Escalar a humano
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Ganado
+                </button>
+                <button
+                  data-testid="btn-mark-lost"
+                  disabled={!!done}
+                  onClick={() => advanceLead(lead.id, "lost")}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface py-2 text-[11px] font-semibold text-text-muted transition-colors hover:text-text disabled:opacity-40"
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Perdido
                 </button>
               </div>
+              <button
+                data-testid="btn-escalate"
+                onClick={() => escalateLead(lead.id)}
+                className="w-full rounded-lg bg-hot/15 py-2.5 text-[12px] font-semibold text-hot transition-colors hover:bg-hot/25"
+              >
+                Escalar a humano
+              </button>
             </div>
           </motion.aside>
         </>

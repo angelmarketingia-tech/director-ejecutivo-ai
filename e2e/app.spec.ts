@@ -47,27 +47,33 @@ test("BOTÓN Generar lead crea un lead real (métrica +1)", async ({ page }) => 
   await expect(page.getByTestId("metric-leads")).toHaveText(String(before + 1));
 });
 
-test("FUNCIÓN pipeline por lead lo lleva a cierre (ganado/perdido)", async ({ page }) => {
+test("FUNCIÓN preparar mensaje: investiga, califica y deja un borrador real listo", async ({ page }) => {
   await page.getByTestId("area-comercial").click();
   await pauseAmbient(page);
   await page.getByTestId("subnav-leads").click();
   await page.getByTestId("lead-row").first().click();
   await expect(page.getByTestId("lead-stage")).toBeVisible();
   await page.getByTestId("btn-run-pipeline").click();
-  // Tras el pipeline, la etapa debe ser terminal y trazable
-  await expect(page.getByTestId("lead-stage")).toHaveText(/Cerrado|Perdido/);
+  // No inventa cierres: queda calificado con un mensaje preparado (no enviado).
+  await expect(page.getByTestId("lead-stage")).toHaveText(/Calificado/);
+  await expect(page.getByTestId("outreach-message")).toBeVisible();
 });
 
-test("BOTÓN Ejecutar pipeline de todos cierra los leads abiertos", async ({ page }) => {
+test("FUNCIÓN desenlace manual: marcar 'Ganado' mueve el lead a Cerrado", async ({ page }) => {
+  await page.getByTestId("area-comercial").click();
+  await pauseAmbient(page);
+  await page.getByTestId("subnav-leads").click();
+  await page.getByTestId("lead-row").first().click();
+  await page.getByTestId("btn-mark-won").click();
+  await expect(page.getByTestId("lead-stage")).toHaveText(/Cerrado/);
+});
+
+test("BOTÓN Investigar y calificar todos prepara los leads abiertos", async ({ page }) => {
   await page.getByTestId("area-comercial").click();
   await pauseAmbient(page);
   await page.getByTestId("btn-cerrar-pipeline").click();
   const result = page.getByTestId("control-result");
-  await expect(result).toContainText(/Pipeline ejecutado: \d+ ganados · \d+ perdidos/);
-  const txt = await result.innerText();
-  const won = Number(txt.match(/(\d+) ganados/)?.[1] ?? "0");
-  const lost = Number(txt.match(/(\d+) perdidos/)?.[1] ?? "0");
-  expect(won + lost).toBeGreaterThan(0);
+  await expect(result).toContainText(/\d+ de \d+ leads investigados y calificados/);
 });
 
 test("FUNCIÓN agente con subagentes produce un entregable", async ({ page }) => {
@@ -117,20 +123,12 @@ test("MODO sin voz: el pipeline NO genera llamadas (canal de voz apagado)", asyn
   await expect(page.getByTestId("metric-llamadas")).toHaveText("0");
 });
 
-test("PRESUPUESTO: tope de gasto bajo detiene el pipeline (no se dispara la factura)", async ({ page }) => {
+test("HONESTIDAD: investigar/calificar NO cierra tratos solo (no inventa cierres)", async ({ page }) => {
   await page.getByTestId("area-comercial").click();
   await pauseAmbient(page);
-  // Fija el tope de gasto diario a 0 USD
-  await page.getByTestId("subnav-settings").click();
-  const cap = page.getByTestId("preset-equilibrada"); // asegura preset con costo > 0
-  await cap.click();
-  // Pone el tope de gasto a 0 (primer input numérico = spendUsd)
-  const spendInput = page.locator('input[type="number"]').first();
-  await spendInput.fill("0");
-  await page.getByTestId("subnav-deck").click();
   const cierresBefore = await num(page, "metric-cierres");
   await page.getByTestId("btn-cerrar-pipeline").click();
-  // Con tope 0, no debe cerrar nada nuevo
+  // El motor determinista solo prepara: los cierres NO aumentan sin acción humana.
   await expect(page.getByTestId("metric-cierres")).toHaveText(String(cierresBefore));
 });
 
@@ -150,11 +148,17 @@ test("CONTROL: 'Apagar todos' deja 0 agentes activos", async ({ page }) => {
   await expect(page.getByTestId("agents-active-count")).not.toContainText(/^0\//);
 });
 
-test("AGENCIA: los leads ganados aparecen como cuentas en Marketing", async ({ page }) => {
+test("AGENCIA: un lead marcado como ganado aparece como cuenta en Marketing", async ({ page }) => {
   await page.getByTestId("area-comercial").click();
   await pauseAmbient(page);
-  await page.getByTestId("btn-cerrar-pipeline").click(); // genera cierres (cuentas)
+  await page.getByTestId("subnav-leads").click();
+  await page.getByTestId("lead-row").first().click();
+  await page.getByTestId("btn-mark-won").click(); // cierre REAL marcado por el usuario
+  await expect(page.getByTestId("lead-stage")).toHaveText(/Cerrado/);
+  await page.keyboard.press("Escape"); // cierra el drawer
+  await page.getByTestId("subnav-deck").click(); // MetricsBar vive en el Deck
   const cierres = await num(page, "metric-cierres");
+  expect(cierres).toBeGreaterThan(0);
   await page.getByTestId("area-marketing").click();
   const accounts = await num(page, "marketing-accounts");
   expect(accounts).toBe(cierres);
