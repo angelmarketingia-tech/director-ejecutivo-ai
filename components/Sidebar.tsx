@@ -18,6 +18,7 @@ import {
   Mail,
   LayoutDashboard,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 const AREA_ICON: Record<string, any> = {
@@ -126,10 +127,17 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <div className="grid h-8 w-8 place-items-center rounded-full bg-prospect/15 text-[11px] font-semibold text-prospect">
           AV
         </div>
-        <div className="leading-tight">
+        <div className="min-w-0 flex-1 leading-tight">
           <p className="text-[12px] font-medium text-text">Angel Vaca</p>
           <p className="text-[10px] text-text-dim">Operador · Ganaplay</p>
         </div>
+        <a
+          href="/api/auth/logout"
+          title="Cerrar sesión"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border text-text-dim transition-colors hover:text-text"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+        </a>
       </div>
     </>
   );
