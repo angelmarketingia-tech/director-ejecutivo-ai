@@ -134,11 +134,18 @@ export async function writeEmail(input: {
   lead: Partial<Lead> & { company: string; contactName?: string };
   research?: ResearchResult;
   service: string;
+  seller?: { name: string; business: string; phone: string };
 }) {
+  const sellerLine = input.seller
+    ? `FIRMA el mensaje EXACTAMENTE con estos datos reales (sin corchetes ni placeholders): ` +
+      `${input.seller.name} · ${input.seller.business} · ${input.seller.phone}. `
+    : "";
   const prompt =
     `Redacta un email comercial para ofrecer "${input.service}". ` +
     `Usa el hook de investigación y respeta la estructura obligatoria (promesa, valor, oferta, prueba, CTA, opt-out). ` +
     `IMPORTANTE: el "body" debe estar COMPLETO de principio a fin (no lo cortes). ` +
+    `NO uses placeholders entre corchetes ni llaves: escribe el texto final listo para enviar. ` +
+    sellerLine +
     `Mantén followUpPlan corto (máximo 1 seguimiento) o vacío.\n` +
     JSON.stringify({ lead: input.lead, research: input.research }, null, 2);
   return runAgent<EmailResult>({

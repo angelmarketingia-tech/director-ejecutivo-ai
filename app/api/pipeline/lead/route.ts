@@ -10,6 +10,14 @@ export const maxDuration = 60;
 
 const SERVICE = "una página web profesional para conseguir más clientes";
 
+// Firma real del vendedor (sobrescribible por variables de entorno en Vercel).
+const SELLER = {
+  name: process.env.SELLER_NAME || "Angel Vaca",
+  business: process.env.SELLER_BUSINESS || "Daptux.IA",
+  phone: process.env.SELLER_PHONE || "+57 323 229 5422",
+};
+const SIGNATURE = `${SELLER.name}\n${SELLER.business}\n${SELLER.phone}`;
+
 /** Rellena los placeholders ({{contactName}}, {{company}}, {{city}}) con datos reales. */
 function fillPlaceholders(text: string, lead: any): string {
   const first = (lead.contactName ?? "").split(" ")[0] ?? "";
@@ -19,8 +27,19 @@ function fillPlaceholders(text: string, lead: any): string {
     .replace(/\{\{\s*city\s*\}\}/gi, lead.city ?? "")
     .replace(/\{\{\s*\w+\s*\}\}/g, "") // cualquier otro placeholder → vacío
     .replace(/Hola\s*,/g, "Hola,") // limpia "Hola ," cuando no hay nombre
-    .replace(/Hola\s+,/g, "Hola,")
     .trim();
+}
+
+/** Garantiza la firma real: reemplaza el bloque [corchetes] por los datos del vendedor. */
+function applySignature(text: string): string {
+  let b = text || "";
+  // Reemplaza el primer bloque de líneas tipo "[Nombre del asesor]" por la firma real.
+  b = b.replace(/(?:[ \t]*\[[^\]\n]*\][ \t]*\n?){1,6}/, SIGNATURE + "\n");
+  // Limpia cualquier corchete suelto que haya quedado.
+  b = b.replace(/\[[^\]\n]*\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  // Si el modelo no incluyó la firma, la añade al final.
+  if (!b.includes(SELLER.business)) b += `\n\n${SIGNATURE}`;
+  return b;
 }
 
 /**
@@ -53,11 +72,11 @@ export async function POST(req: Request) {
     const sc = await score({ lead, research: researchData, service: SERVICE });
     const scoring = sc.data;
 
-    // 3) QUILL redacta el mensaje (Claude real). Rellena placeholders con datos reales.
-    const em = await writeEmail({ lead, research: researchData, service: SERVICE });
+    // 3) QUILL redacta el mensaje (Claude real). Rellena placeholders + firma real.
+    const em = await writeEmail({ lead, research: researchData, service: SERVICE, seller: SELLER });
     const email = {
-      subject: fillPlaceholders(em.data.subject, lead),
-      body: fillPlaceholders(em.data.body, lead),
+      subject: fillPlaceholders(em.data.subject, lead).replace(/[,;]\s*$/, ""),
+      body: applySignature(fillPlaceholders(em.data.body, lead)),
     };
 
     // 4) Contacto REAL: solo email si hay dirección + Resend configurado + dominio permitido.

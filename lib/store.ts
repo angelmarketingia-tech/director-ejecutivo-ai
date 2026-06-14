@@ -251,6 +251,7 @@ function buildOutreach(lead: Lead): NonNullable<Lead["outreach"]> {
   }
   const channel: "whatsapp" | "email" = lead.phone ? "whatsapp" : "email";
   const subject = `${lead.company}: más clientes con una web profesional`;
+  message += `\n\n— Angel Vaca · Daptux.IA · +57 323 229 5422`;
   return { channel, subject, message, preparedAt: Date.now() };
 }
 
