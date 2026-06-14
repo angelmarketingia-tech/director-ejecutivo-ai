@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchPlacesApify } from "@/lib/integrations/apify";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { saveLeads } from "@/lib/leadstore";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
 
   try {
     const leads = await searchPlacesApify({ niche, city, count });
+    await saveLeads(leads as any);
     const note =
       leads.length === 0
         ? "Apify no devolvió resultados para ese nicho/ciudad."

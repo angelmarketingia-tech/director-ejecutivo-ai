@@ -122,8 +122,10 @@ interface DeckState {
   // ── Motor REAL (acciones deterministas y trazables, no aleatorias) ──
   /** Genera un lead real y lo coloca en "prospectado". Devuelve su id. */
   addLead: () => string;
-  /** Inserta leads REALES descubiertos por búsqueda web (con su fuente). Devuelve cuántos. */
+  /** Inserta leads REALES descubiertos (dedup por empresa+ciudad). Devuelve cuántos nuevos. */
   addDiscoveredLeads: (items: DiscoveredLeadInput[]) => number;
+  /** Carga los leads guardados en el servidor (cross-device) al entrar. */
+  loadServerLeads: () => Promise<void>;
   /**
    * Ejecuta el pipeline COMPLETO sobre un lead: investigación → scoring → contacto
    * (email/llamada reales) → decisión de avance → cierre (ganado/perdido).
@@ -644,10 +646,32 @@ export const useDeck = create<DeckState>()(
     return lead.id;
   },
 
+  loadServerLeads: async () => {
+    try {
+      const r = await fetch("/api/leads");
+      if (!r.ok) return;
+      const j = await r.json();
+      if (Array.isArray(j.leads) && j.leads.length) get().addDiscoveredLeads(j.leads);
+    } catch {
+      /* sin red / sin sesión: no pasa nada */
+    }
+  },
+
   addDiscoveredLeads: (items) => {
     if (!items?.length) return 0;
     let n = 0;
     set((s) => {
+      // Dedupe por empresa+ciudad (evita duplicados al cargar del servidor + buscar)
+      const seen = new Set(
+        s.leads.map((l) => `${l.company.toLowerCase().trim()}|${(l.city || "").toLowerCase().trim()}`)
+      );
+      items = items.filter((it) => {
+        const k = `${(it.company || "").toLowerCase().trim()}|${(it.city || "").toLowerCase().trim()}`;
+        if (!it.company || seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      if (items.length === 0) return {};
       const mapped: Lead[] = items.map((it) => {
         const hasWebsite = it.hasWebsite;
         const digitalScore = hasWebsite ? 55 : 18;
@@ -901,6 +925,8 @@ export const useDeck = create<DeckState>()(
         dailyCaps: s.dailyCaps,
         agentEnabled: s.agentEnabled,
         subagentsEnabled: s.subagentsEnabled,
+        // En operación real, recuerda los leads en este dispositivo (respaldo same-device).
+        ...(IS_DEMO ? {} : { leads: s.leads }),
       }),
       // No rehidratar en el primer render (evita desajustes de hidratación con SSR).
       // Se rehidrata manualmente tras montar (ver DemoClock).

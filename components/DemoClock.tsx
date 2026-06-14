@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useDeck } from "@/lib/store";
+import { IS_DEMO } from "@/lib/demoFlag";
 
 /**
  * Reloj de la simulación. Monta un único intervalo que llama a tick().
@@ -15,6 +16,8 @@ export function DemoClock() {
   // Rehidrata la configuración persistida DESPUÉS de montar (evita desajustes de hidratación).
   useEffect(() => {
     useDeck.persist.rehydrate();
+    // En operación real, carga los leads guardados en el servidor (cross-device).
+    if (!IS_DEMO) useDeck.getState().loadServerLeads();
   }, []);
 
   useEffect(() => {

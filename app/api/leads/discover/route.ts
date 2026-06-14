@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { discoverLeads } from "@/lib/agents/webprospect";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { saveLeads } from "@/lib/leadstore";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
 
   try {
     const result = await discoverLeads({ niche, city, count });
+    await saveLeads(result.leads as any);
     return NextResponse.json({ ok: true, budget: getBudget(), ...result });
   } catch (err: any) {
     if (err instanceof BudgetExceededError) {

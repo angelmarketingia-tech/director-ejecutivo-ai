@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchBusinesses } from "@/lib/integrations/maps";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { saveLeads } from "@/lib/leadstore";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
       phone: p.phone ?? null,
       email: null,
     }));
+    await saveLeads(leads); // persiste en servidor (cross-device) si KV está configurado
     const note = leads.length === 0 ? "Google Places no devolvió resultados." : `${leads.length} negocios reales de Google Places (con teléfono/web).`;
     return NextResponse.json({ ok: true, leads, note });
   } catch {
