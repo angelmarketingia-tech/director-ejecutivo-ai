@@ -121,6 +121,7 @@ export function SettingsView() {
   return (
     <div className="flex flex-col gap-4">
       <ClaudeStatus />
+      <TokenSavings />
       <AgentControlPanel />
 
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -264,6 +265,33 @@ export function SettingsView() {
         </div>
       </div>
     </div>
+    </div>
+  );
+}
+
+/** Explicador intuitivo de cómo se ahorran tokens sin perder calidad. */
+function TokenSavings() {
+  const savings = [
+    { t: "Solo gastas cuando TÚ ejecutas", d: "Nada llama a Claude por su cuenta. Los agentes están en reposo hasta que pulses “Ejecutar” o “Buscar”." },
+    { t: "Tope de gasto diario", d: "El sistema corta solo al llegar al límite (ajústalo abajo). Nunca un susto en la factura." },
+    { t: "Preset Equilibrada", d: "Usa modelos baratos (Haiku) para lo masivo y potentes (Sonnet) solo donde importa." },
+    { t: "Subagentes opcionales", d: "Actívalos para máxima calidad (más tokens) o déjalos off para ahorrar. Tú decides." },
+    { t: "Apaga agentes que no uses", d: "Un agente apagado no trabaja ni gasta. Enciéndelos cuando los necesites." },
+  ];
+  return (
+    <div className="panel p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Gauge className="h-4 w-4 text-ok" />
+        <p className="text-[14px] font-semibold text-text">Ahorro de tokens (sin perder calidad)</p>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {savings.map((s) => (
+          <div key={s.t} className="rounded-lg border border-border bg-surface/50 px-3 py-2.5">
+            <p className="text-[12px] font-medium text-text">✓ {s.t}</p>
+            <p className="mt-0.5 text-[11px] text-text-dim">{s.d}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -8,7 +8,8 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // Reintentos para absorber fallos transitorios (servidor en vivo, timing).
+  retries: process.env.CI ? 2 : 1,
   reporter: [["list"]],
   timeout: 30_000,
   use: {

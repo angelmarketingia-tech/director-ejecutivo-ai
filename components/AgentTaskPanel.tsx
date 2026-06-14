@@ -39,6 +39,7 @@ export function AgentTaskPanel({
   onClose: () => void;
 }) {
   const preset = useDeck((s) => s.preset);
+  const subagentsEnabled = useDeck((s) => s.subagentsEnabled);
   useEscape(!!agent, onClose);
   const [task, setTask] = useState("");
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
@@ -55,9 +56,12 @@ export function AgentTaskPanel({
     setError(null);
   }
 
-  const specs = (SUBAGENT_PLAYBOOK[agent?.name ?? ""] ?? SUBAGENT_PLAYBOOK.default)
-    .slice(0, 2)
-    .map((s) => ({ label: s.label, instruction: s.purpose }));
+  // Económico: sin subagentes (más barato). Calidad: con subagentes (más tokens).
+  const specs = subagentsEnabled
+    ? (SUBAGENT_PLAYBOOK[agent?.name ?? ""] ?? SUBAGENT_PLAYBOOK.default)
+        .slice(0, 2)
+        .map((s) => ({ label: s.label, instruction: s.purpose }))
+    : [];
 
   async function run() {
     if (!agent || !task.trim()) return;
@@ -136,7 +140,14 @@ export function AgentTaskPanel({
                 className="w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text outline-none focus:border-prospect/50"
               />
 
-              <p className="label-eyebrow mb-2 mt-4">Subagentes que se crearán (calidad)</p>
+              <p className="label-eyebrow mb-2 mt-4">
+                {specs.length ? "Subagentes que se crearán (calidad)" : "Modo económico (sin subagentes)"}
+              </p>
+              {specs.length === 0 && (
+                <p className="rounded-lg border border-border bg-surface/50 px-3 py-2 text-[11px] text-text-dim">
+                  Ahorro de tokens activo. Para máxima calidad, activa “Subagentes” en Configuración.
+                </p>
+              )}
               <div className="flex flex-col gap-1.5">
                 {specs.map((s) => (
                   <div key={s.label} className="flex items-start gap-2 rounded-lg border border-border bg-surface/50 px-3 py-2">
