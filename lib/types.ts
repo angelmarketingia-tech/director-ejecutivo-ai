@@ -72,6 +72,12 @@ export interface Lead {
   consent: "none" | "soft_optin" | "opt_in" | "opt_out";
   createdAt: number;
   ownerAgent: AgentId;
+  /** Procedencia real: URL de la fuente donde se halló (búsqueda web). */
+  sourceUrl?: string;
+  /** Perfiles sociales reales encontrados (URLs). */
+  socials?: string[];
+  /** true = datos obtenidos de una fuente real (no simulado). */
+  verified?: boolean;
 }
 
 export type ChannelType = "email" | "whatsapp" | "call";

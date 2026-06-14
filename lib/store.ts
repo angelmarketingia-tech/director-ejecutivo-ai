@@ -37,6 +37,19 @@ import {
   costForStep,
 } from "@/lib/agents/pricing";
 
+/** Forma de un lead descubierto por búsqueda web (definido aquí para no importar
+ *  el módulo servidor `webprospect` en el cliente). */
+export interface DiscoveredLeadInput {
+  company: string;
+  category: string | null;
+  city: string | null;
+  website: string | null;
+  hasWebsite: boolean;
+  socials: string[];
+  evidenceUrl: string | null;
+  audienceNote: string | null;
+}
+
 type View =
   | "deck"
   | "pipeline"
@@ -105,6 +118,8 @@ interface DeckState {
   // ── Motor REAL (acciones deterministas y trazables, no aleatorias) ──
   /** Genera un lead real y lo coloca en "prospectado". Devuelve su id. */
   addLead: () => string;
+  /** Inserta leads REALES descubiertos por búsqueda web (con su fuente). Devuelve cuántos. */
+  addDiscoveredLeads: (items: DiscoveredLeadInput[]) => number;
   /**
    * Ejecuta el pipeline COMPLETO sobre un lead: investigación → scoring → contacto
    * (email/llamada reales) → decisión de avance → cierre (ganado/perdido).
@@ -235,6 +250,7 @@ const initialLeads = seedLeads(14);
 
 // ── Agentes de área (autónomos, con subagentes) ──
 let SUB = 1;
+let WEBSEQ = 1; // ids de leads descubiertos por web
 function buildAreaAgents(): Record<Exclude<Area, "hq">, AreaAgent[]> {
   const out = {} as Record<Exclude<Area, "hq">, AreaAgent[]>;
   (Object.keys(AREA_AGENTS_SEED) as Array<Exclude<Area, "hq">>).forEach((area) => {
@@ -600,6 +616,61 @@ export const useDeck = create<DeckState>()(
       };
     });
     return lead.id;
+  },
+
+  addDiscoveredLeads: (items) => {
+    if (!items?.length) return 0;
+    let n = 0;
+    set((s) => {
+      const mapped: Lead[] = items.map((it) => {
+        const hasWebsite = it.hasWebsite;
+        const digitalScore = hasWebsite ? 55 : 18;
+        // Sin rating real disponible: el score pondera la oportunidad (sin web = más alta).
+        const score = Math.max(20, Math.min(95, (hasWebsite ? 55 : 78) + (it.socials.length ? 6 : 0)));
+        const temperature: Lead["temperature"] = score >= 72 ? "hot" : score >= 48 ? "warm" : "cold";
+        const needs = hasWebsite
+          ? ["Mejora de presencia digital", "Marketing digital"]
+          : ["Sitio web profesional", "Presencia digital"];
+        n++;
+        return {
+          id: `ld_web_${WEBSEQ++}`,
+          company: it.company,
+          category: it.category ?? "Negocio",
+          city: it.city ?? "",
+          country: "",
+          // Contacto NO inventado: se deja vacío hasta enriquecer con fuentes/Places.
+          contactName: undefined,
+          phone: undefined,
+          email: undefined,
+          website: it.website,
+          hasWebsite,
+          digitalScore,
+          rating: undefined,
+          reviews: undefined,
+          score,
+          temperature,
+          stage: "prospected",
+          closeProbability: Math.round(score * 0.6),
+          needs,
+          consent: "none",
+          createdAt: Date.now(),
+          ownerAgent: "prospect",
+          sourceUrl: it.evidenceUrl ?? undefined,
+          socials: it.socials,
+          verified: true,
+        } as Lead;
+      });
+      const leads = [...mapped, ...s.leads].slice(0, 300);
+      return {
+        leads,
+        events: [
+          evt("prospect", "success", `SCOUT (web real): ${mapped.length} negocios verificados añadidos`),
+          ...s.events,
+        ].slice(0, 80),
+        metrics: recomputeMetrics({ leads, emails: s.emails, whatsapp: s.whatsapp, calls: s.calls }),
+      };
+    });
+    return n;
   },
 
   runLeadPipeline: (id) => {
