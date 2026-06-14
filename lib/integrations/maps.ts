@@ -20,6 +20,7 @@ export interface PlaceLead {
   hasWebsite: boolean;
   rating?: number;
   reviews?: number;
+  phone?: string | null;
   externalId: string;
   source: "google_maps" | "demo";
 }
@@ -53,7 +54,7 @@ export async function searchBusinesses(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": env.mapsKey as string,
       "X-Goog-FieldMask":
-        "places.displayName,places.formattedAddress,places.location,places.websiteUri,places.rating,places.userRatingCount,places.primaryType,places.id",
+        "places.displayName,places.formattedAddress,places.location,places.websiteUri,places.rating,places.userRatingCount,places.primaryType,places.id,places.internationalPhoneNumber,places.nationalPhoneNumber",
     },
     body: JSON.stringify({ textQuery: `${query} ${opts.city ?? ""}`.trim() }),
   });
@@ -72,6 +73,7 @@ export async function searchBusinesses(
     hasWebsite: !!p.websiteUri,
     rating: p.rating,
     reviews: p.userRatingCount,
+    phone: p.internationalPhoneNumber ?? p.nationalPhoneNumber ?? null,
     externalId: p.id,
     source: "google_maps",
   }));

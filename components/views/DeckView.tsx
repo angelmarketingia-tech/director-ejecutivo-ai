@@ -14,14 +14,15 @@ function WebProspect() {
   const addDiscoveredLeads = useDeck((s) => s.addDiscoveredLeads);
   const [niche, setNiche] = useState("restaurantes");
   const [city, setCity] = useState("Quito");
-  const [source, setSource] = useState<"web" | "apify">("web");
+  const [source, setSource] = useState<"web" | "places" | "apify">("web");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function search() {
     setLoading(true);
     setMsg(null);
-    const endpoint = source === "apify" ? "/api/leads/apify" : "/api/leads/discover";
+    const endpoint =
+      source === "apify" ? "/api/leads/apify" : source === "places" ? "/api/leads/places" : "/api/leads/discover";
     try {
       const r = await fetch(endpoint, {
         method: "POST",
@@ -37,7 +38,11 @@ function WebProspect() {
             : "No se hallaron negocios reales. Prueba otro nicho/ciudad."
         );
       } else if (j.noKey) {
-        setMsg("⚠️ Falta ANTHROPIC_API_KEY: no busco datos reales ni invento nada.");
+        setMsg(
+          source === "places"
+            ? "⚠️ Falta GOOGLE_MAPS_API_KEY (y NEXT_PUBLIC_DEMO_MODE=false). No invento datos."
+            : "⚠️ Falta ANTHROPIC_API_KEY: no busco datos reales ni invento nada."
+        );
       } else if (j.noToken) {
         setMsg("⚠️ Falta APIFY_TOKEN en Vercel para usar Apify.");
       } else if (j.budgetExceeded) {
@@ -63,6 +68,13 @@ function WebProspect() {
             className={`rounded-md px-2 py-1 text-[10px] font-semibold ${source === "web" ? "bg-prospect/20 text-prospect" : "text-text-dim"}`}
           >
             Web (Claude)
+          </button>
+          <button
+            data-testid="src-places"
+            onClick={() => setSource("places")}
+            className={`rounded-md px-2 py-1 text-[10px] font-semibold ${source === "places" ? "bg-prospect/20 text-prospect" : "text-text-dim"}`}
+          >
+            Google Places (tel)
           </button>
           <button
             data-testid="src-apify"
