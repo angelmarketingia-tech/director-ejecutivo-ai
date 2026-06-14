@@ -47,6 +47,18 @@ test("UX · navegar las 6 áreas + subnav comercial sin errores", async ({ page 
   await assertClean(errors);
 });
 
+test("UX · el panel 'Buscar leads REALES' está visible con sus 3 fuentes", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-comercial").click();
+  await expect(page.getByTestId("web-niche")).toBeVisible();
+  await expect(page.getByTestId("web-city")).toBeVisible();
+  await expect(page.getByTestId("btn-web-search")).toBeVisible();
+  await expect(page.getByTestId("src-web")).toBeVisible();
+  await expect(page.getByTestId("src-places")).toBeVisible();
+  await expect(page.getByTestId("src-apify")).toBeVisible();
+  await assertClean(errors);
+});
+
 test("UX · sala de control: generar lead, cerrar pipeline, velocidad, reset", async ({ page }) => {
   const errors = spyErrors(page);
   await page.getByTestId("area-comercial").click();
