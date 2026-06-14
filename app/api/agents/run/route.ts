@@ -31,7 +31,7 @@ type Body = {
 export async function POST(req: Request) {
   const rl = rateLimit(req, "agents-run", 20, 60_000);
   if (!rl.ok) return NextResponse.json({ ok: false, error: "Rate limit" }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
-  if (!authorized(req)) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+  if (!(await authorized(req))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
 
   const { data, tooLarge, bad } = await readJsonLimited(req, 16_000);
   if (tooLarge) return NextResponse.json({ ok: false, error: "Payload demasiado grande" }, { status: 413 });

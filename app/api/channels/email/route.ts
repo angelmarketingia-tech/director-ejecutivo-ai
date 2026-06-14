@@ -40,10 +40,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Destinatario inválido" }, { status: 400 });
   }
 
-  // Envío REAL: requiere autorización + dominio permitido. Demo: siempre simula.
+  // Envío REAL: requiere sesión/autorización + dominio permitido. Demo: siempre simula.
   if (!DEMO_MODE) {
-    if (!authorized(req)) {
-      return NextResponse.json({ ok: false, error: "Envío real no autorizado (configura API_SHARED_SECRET)" }, { status: 401 });
+    if (!(await authorized(req))) {
+      return NextResponse.json({ ok: false, error: "Envío real no autorizado (inicia sesión)" }, { status: 401 });
     }
     if (!recipientAllowed(to)) {
       return NextResponse.json({ ok: false, error: "Dominio de destinatario no permitido" }, { status: 403 });

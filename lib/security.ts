@@ -52,14 +52,33 @@ export async function readJsonLimited(
   }
 }
 
+function getCookie(req: Request, name: string): string | undefined {
+  const raw = req.headers.get("cookie");
+  if (!raw) return undefined;
+  for (const part of raw.split(";")) {
+    const idx = part.indexOf("=");
+    if (idx < 0) continue;
+    const k = part.slice(0, idx).trim();
+    if (k === name) return decodeURIComponent(part.slice(idx + 1).trim());
+  }
+  return undefined;
+}
+
 /**
- * Autorización opcional: si API_SHARED_SECRET está configurado, exige el header
- * `x-api-secret`. Si no está configurado, no se exige (uso local / en-app en demo).
+ * Autorización de endpoints sensibles. Acepta:
+ *  1) sesión de login válida (cookie) → caso navegador / app,
+ *  2) secreto compartido `x-api-secret` → caso programático externo,
+ *  3) si no hay login ni secreto configurados → se permite (dev/demo).
+ * Las rutas ya están además protegidas por el middleware de login.
  */
-export function authorized(req: Request): boolean {
+export async function authorized(req: Request): Promise<boolean> {
+  const { verifyToken, AUTH_COOKIE } = await import("@/lib/auth");
+  const token = getCookie(req, AUTH_COOKIE);
+  if (token && (await verifyToken(token))) return true;
+
   const secret = process.env.API_SHARED_SECRET;
-  if (!secret) return true;
-  return req.headers.get("x-api-secret") === secret;
+  if (secret) return req.headers.get("x-api-secret") === secret;
+  return true;
 }
 
 export function secretConfigured(): boolean {
