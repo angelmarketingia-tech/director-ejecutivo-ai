@@ -137,12 +137,18 @@ export async function writeEmail(input: {
 }) {
   const prompt =
     `Redacta un email comercial para ofrecer "${input.service}". ` +
-    `Usa el hook de investigación y respeta la estructura obligatoria (promesa, valor, oferta, prueba, CTA, opt-out).\n` +
+    `Usa el hook de investigación y respeta la estructura obligatoria (promesa, valor, oferta, prueba, CTA, opt-out). ` +
+    `IMPORTANTE: el "body" debe estar COMPLETO de principio a fin (no lo cortes). ` +
+    `Mantén followUpPlan corto (máximo 1 seguimiento) o vacío.\n` +
     JSON.stringify({ lead: input.lead, research: input.research }, null, 2);
   return runAgent<EmailResult>({
     agent: "email",
     input: prompt,
     schema: EMAIL_SCHEMA,
+    // Email no requiere razonamiento profundo: effort bajo evita que se agoten los
+    // tokens antes de terminar el cuerpo (causaba mensajes cortados).
+    effort: "low",
+    maxTokens: 2500,
   });
 }
 

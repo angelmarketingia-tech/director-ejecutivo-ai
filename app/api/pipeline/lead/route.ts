@@ -10,6 +10,19 @@ export const maxDuration = 60;
 
 const SERVICE = "una página web profesional para conseguir más clientes";
 
+/** Rellena los placeholders ({{contactName}}, {{company}}, {{city}}) con datos reales. */
+function fillPlaceholders(text: string, lead: any): string {
+  const first = (lead.contactName ?? "").split(" ")[0] ?? "";
+  return (text || "")
+    .replace(/\{\{\s*contactName\s*\}\}/gi, first)
+    .replace(/\{\{\s*company\s*\}\}/gi, lead.company ?? "")
+    .replace(/\{\{\s*city\s*\}\}/gi, lead.city ?? "")
+    .replace(/\{\{\s*\w+\s*\}\}/g, "") // cualquier otro placeholder → vacío
+    .replace(/Hola\s*,/g, "Hola,") // limpia "Hola ," cuando no hay nombre
+    .replace(/Hola\s+,/g, "Hola,")
+    .trim();
+}
+
 /**
  * POST /api/pipeline/lead — ejecuta el PIPELINE COMPLETO sobre UN lead con Claude real:
  *   ORACLE (investiga) → FORGE (califica) → QUILL (redacta el mensaje).
@@ -40,9 +53,12 @@ export async function POST(req: Request) {
     const sc = await score({ lead, research: researchData, service: SERVICE });
     const scoring = sc.data;
 
-    // 3) QUILL redacta el mensaje (Claude real)
+    // 3) QUILL redacta el mensaje (Claude real). Rellena placeholders con datos reales.
     const em = await writeEmail({ lead, research: researchData, service: SERVICE });
-    const email = em.data;
+    const email = {
+      subject: fillPlaceholders(em.data.subject, lead),
+      body: fillPlaceholders(em.data.body, lead),
+    };
 
     // 4) Contacto REAL: solo email si hay dirección + Resend configurado + dominio permitido.
     let sent = false;
