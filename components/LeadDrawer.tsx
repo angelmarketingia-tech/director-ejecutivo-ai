@@ -25,6 +25,7 @@ import {
   Send,
   CheckCircle2,
   XCircle,
+  Zap,
 } from "lucide-react";
 
 interface ResearchData {
@@ -44,6 +45,8 @@ export function LeadDrawer() {
   const escalateLead = useDeck((s) => s.escalateLead);
   const markContacted = useDeck((s) => s.markContacted);
   const advanceLead = useDeck((s) => s.advanceLead);
+  const runAIPipelineLead = useDeck((s) => s.runAIPipelineLead);
+  const ai = useDeck((s) => s.aiPipeline);
   const done = lead && (lead.stage === "won" || lead.stage === "lost");
   useEscape(!!lead, () => close(null));
 
@@ -340,6 +343,22 @@ export function LeadDrawer() {
                 )}
               </button>
               <button
+                data-testid="btn-ai-pipeline-lead"
+                disabled={!!done || ai.running}
+                onClick={() => runAIPipelineLead(lead.id)}
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-director/15 py-2.5 text-[13px] font-semibold text-director transition-colors hover:bg-director/25 disabled:opacity-40"
+              >
+                {ai.running ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Ejecutando pipeline IA…
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" /> Pipeline completo con IA
+                  </>
+                )}
+              </button>
+              <button
                 data-testid="btn-run-pipeline"
                 disabled={!!done}
                 onClick={() => runLeadPipeline(lead.id)}
@@ -348,9 +367,10 @@ export function LeadDrawer() {
                 {done
                   ? `Cerrado · ${STAGE_LABEL[lead.stage]}`
                   : lead.outreach
-                    ? "Volver a preparar mensaje"
-                    : "Investigar y preparar mensaje"}
+                    ? "Volver a preparar (rápido, sin IA)"
+                    : "Preparar mensaje (rápido, sin IA)"}
               </button>
+              {ai.note && <p className="mb-2 text-[11px] text-text-muted">{ai.note}</p>}
 
               {/* Desenlace REAL — lo registras tú según lo que de verdad pase */}
               <p className="mb-1.5 mt-1 text-[10px] uppercase tracking-wide text-text-dim">

@@ -47,6 +47,14 @@ test("UX · navegar las 6 áreas + subnav comercial sin errores", async ({ page 
   await assertClean(errors);
 });
 
+test("UX · la sala de control ofrece pipeline con IA y versión rápida", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-comercial").click();
+  await expect(page.getByTestId("btn-ai-pipeline")).toBeVisible();
+  await expect(page.getByTestId("btn-cerrar-pipeline")).toBeVisible();
+  await assertClean(errors);
+});
+
 test("UX · el panel 'Buscar leads REALES' está visible con sus 3 fuentes", async ({ page }) => {
   const errors = spyErrors(page);
   await page.getByTestId("area-comercial").click();

@@ -133,6 +133,14 @@ interface DeckState {
   runLeadPipeline: (id: string, opts?: { sync?: boolean }) => PipelineStage;
   /** Investiga + califica + prepara mensaje en todos los leads abiertos. */
   closeAllOpen: () => { processed: number; qualified: number };
+  /** Progreso del pipeline con IA real (recorre lead por lead). */
+  aiPipeline: { running: boolean; current: number; total: number; note: string | null };
+  /** Ejecuta el pipeline COMPLETO con Claude real (ORACLE+FORGE+QUILL) sobre todos los abiertos. */
+  runAIPipeline: () => Promise<void>;
+  /** Ejecuta el pipeline con IA real sobre un solo lead. */
+  runAIPipelineLead: (id: string) => Promise<void>;
+  /** Detiene el pipeline con IA en curso. */
+  stopAIPipeline: () => void;
   /** Registras TÚ que ya enviaste el contacto (lo marcas como hecho de verdad). */
   markContacted: (id: string) => void;
   /** Mueves manualmente un lead a una etapa real (interesado/reunión/ganado/perdido). */
@@ -273,6 +281,92 @@ function syncStatesToServer(leads: Lead[]) {
     body: JSON.stringify({ states }),
   }).catch(() => {
     /* offline / sin sesión: el avance queda guardado localmente */
+  });
+}
+
+/** Llama al endpoint que ejecuta el pipeline con IA real sobre UN lead. */
+async function runAILead(
+  lead: Lead,
+  apply: (j: any) => void
+): Promise<{ stop?: boolean; note: string | null }> {
+  try {
+    const res = await fetch("/api/pipeline/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead }),
+    });
+    const j = await res.json();
+    if (j.noKey) return { stop: true, note: "Falta ANTHROPIC_API_KEY en Vercel (Settings → Environment Variables)." };
+    if (j.budgetExceeded) return { stop: true, note: "Tope de gasto diario alcanzado. Súbelo en Configuración." };
+    if (!j.ok) return { note: null }; // error puntual de un lead: se omite y sigue
+    apply(j);
+    return { note: j.sendNote ?? null };
+  } catch {
+    return { note: null }; // error de red en un lead: continúa con el resto
+  }
+}
+
+/** Aplica el resultado del pipeline IA (investigación + scoring + mensaje) a un lead. */
+function applyAIResult(set: any, _get: any, id: string, j: any) {
+  set((s: DeckState) => {
+    const idx = s.leads.findIndex((l) => l.id === id);
+    if (idx < 0) return {} as Partial<DeckState>;
+    const lead = { ...s.leads[idx] };
+    const r = j.research ?? {};
+    const sc = j.scoring ?? {};
+    const msg = j.message ?? {};
+    if (typeof r.digitalScore === "number") lead.digitalScore = r.digitalScore;
+    if (Array.isArray(r.needs) && r.needs.length) lead.needs = r.needs;
+    if (typeof sc.score === "number") lead.score = sc.score;
+    if (sc.temperature) lead.temperature = sc.temperature;
+    if (typeof sc.closeProbability === "number") lead.closeProbability = sc.closeProbability;
+    if (sc.nextAction) lead.nextAction = sc.nextAction;
+    lead.ownerAgent = "email";
+    const channel: "whatsapp" | "email" = lead.phone ? "whatsapp" : "email";
+    lead.outreach = {
+      channel,
+      subject: msg.subject,
+      message: msg.body || lead.outreach?.message || "",
+      preparedAt: Date.now(),
+      sentAt: j.sent ? Date.now() : lead.outreach?.sentAt,
+    };
+    lead.stage = j.sent ? "contacted" : "qualified";
+    if (j.sent) lead.consent = "soft_optin";
+    const leads = [...s.leads];
+    leads[idx] = lead;
+
+    // Si se envió email REAL, regístralo (para métricas y la vista de Emails).
+    let emails = s.emails;
+    if (j.sent) {
+      emails = [
+        {
+          id: `em_${s.emails.length + 1}_${lead.id}`,
+          leadId: lead.id,
+          company: lead.company,
+          subject: msg.subject ?? lead.company,
+          template: "ia",
+          status: "sent" as const,
+          at: Date.now(),
+        },
+        ...s.emails,
+      ].slice(0, 200);
+    }
+
+    return {
+      leads,
+      emails,
+      events: [
+        evt(
+          "email",
+          j.sent ? "success" : "info",
+          j.sent
+            ? `QUILL → email REAL enviado a ${lead.company}`
+            : `IA preparó ${lead.company} · mensaje listo (score ${lead.score})`
+        ),
+        ...s.events,
+      ].slice(0, 80),
+      metrics: recomputeMetrics({ leads, emails, whatsapp: s.whatsapp, calls: s.calls }),
+    };
   });
 }
 
@@ -524,6 +618,52 @@ export const useDeck = create<DeckState>()(
   }),
   selectedLeadId: null,
   selectLead: (id) => set({ selectedLeadId: id }),
+
+  aiPipeline: { running: false, current: 0, total: 0, note: null },
+  stopAIPipeline: () =>
+    set((s) => ({ aiPipeline: { ...s.aiPipeline, running: false, note: "Pipeline detenido." } })),
+
+  runAIPipelineLead: async (id) => {
+    const lead = get().leads.find((l) => l.id === id);
+    if (!lead) return;
+    set({ aiPipeline: { running: true, current: 0, total: 1, note: null } });
+    const res = await runAILead(lead, (patch) => applyAIResult(set, get, id, patch));
+    set({
+      aiPipeline: {
+        running: false,
+        current: 1,
+        total: 1,
+        note: res.note,
+      },
+    });
+    const updated = get().leads.find((l) => l.id === id);
+    if (updated) syncStatesToServer([updated]);
+  },
+
+  runAIPipeline: async () => {
+    const open = get().leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
+    if (!open.length) {
+      set({ aiPipeline: { running: false, current: 0, total: 0, note: "No hay leads abiertos. Busca leads reales primero." } });
+      return;
+    }
+    set({ aiPipeline: { running: true, current: 0, total: open.length, note: null } });
+    for (let i = 0; i < open.length; i++) {
+      if (!get().aiPipeline.running) break; // permite detener
+      const lead = get().leads.find((l) => l.id === open[i].id);
+      if (!lead) continue;
+      const res = await runAILead(lead, (patch) => applyAIResult(set, get, lead.id, patch));
+      set((s) => ({ aiPipeline: { ...s.aiPipeline, current: i + 1 } }));
+      if (res.stop) {
+        set((s) => ({ aiPipeline: { ...s.aiPipeline, running: false, note: res.note } }));
+        return;
+      }
+    }
+    // Sube todo el avance al servidor (una vez).
+    syncStatesToServer(get().leads.filter((l) => open.some((o) => o.id === l.id)));
+    set((s) => ({
+      aiPipeline: { ...s.aiPipeline, running: false, note: `Pipeline IA completado en ${open.length} leads.` },
+    }));
+  },
 
   tick: () => {
     const s = get();

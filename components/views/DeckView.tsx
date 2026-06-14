@@ -119,39 +119,77 @@ function WebProspect() {
 function ControlBar() {
   const addLead = useDeck((s) => s.addLead);
   const closeAllOpen = useDeck((s) => s.closeAllOpen);
+  const runAIPipeline = useDeck((s) => s.runAIPipeline);
+  const stopAIPipeline = useDeck((s) => s.stopAIPipeline);
+  const ai = useDeck((s) => s.aiPipeline);
   const [result, setResult] = useState<string | null>(null);
 
+  const pct = ai.total ? Math.round((ai.current / ai.total) * 100) : 0;
+
   return (
-    <div className="panel flex flex-wrap items-center gap-2 p-3">
-      {IS_DEMO && (
+    <div className="panel flex flex-col gap-2 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {IS_DEMO && (
+          <button
+            data-testid="btn-generar-lead"
+            onClick={() => {
+              addLead();
+              setResult("Lead (demo) generado y prospectado");
+            }}
+            className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-[12px] font-semibold text-text-muted transition-colors hover:text-text"
+          >
+            <UserPlus className="h-3.5 w-3.5" /> Generar lead demo
+          </button>
+        )}
+
+        {/* Pipeline COMPLETO con IA real (ORACLE + FORGE + QUILL) */}
+        {ai.running ? (
+          <button
+            data-testid="btn-ai-stop"
+            onClick={stopAIPipeline}
+            className="flex items-center gap-2 rounded-lg border border-hot/40 bg-hot/15 px-3 py-2 text-[12px] font-semibold text-hot transition-colors hover:bg-hot/25"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Detener ({ai.current}/{ai.total})
+          </button>
+        ) : (
+          <button
+            data-testid="btn-ai-pipeline"
+            onClick={() => {
+              setResult(null);
+              runAIPipeline();
+            }}
+            className="flex items-center gap-2 rounded-lg border border-director/40 bg-director/15 px-3 py-2 text-[12px] font-semibold text-director transition-colors hover:bg-director/25"
+          >
+            <Zap className="h-3.5 w-3.5" /> Ejecutar pipeline con IA (todos)
+          </button>
+        )}
+
+        {/* Versión rápida y gratis (sin IA): investiga/califica/prepara al instante */}
         <button
-          data-testid="btn-generar-lead"
+          data-testid="btn-cerrar-pipeline"
           onClick={() => {
-            addLead();
-            setResult("Lead (demo) generado y prospectado");
+            const r = closeAllOpen();
+            setResult(
+              r.processed === 0
+                ? "No hay leads abiertos. Busca leads reales primero."
+                : `${r.qualified} de ${r.processed} leads investigados y calificados · mensajes listos para enviar`
+            );
           }}
           className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-[12px] font-semibold text-text-muted transition-colors hover:text-text"
         >
-          <UserPlus className="h-3.5 w-3.5" /> Generar lead demo
+          <Zap className="h-3.5 w-3.5" /> Rápido (sin IA)
         </button>
+      </div>
+
+      {ai.running && (
+        <div className="h-1.5 overflow-hidden rounded-full bg-bg-soft">
+          <div className="h-full rounded-full bg-director transition-all" style={{ width: `${pct}%` }} />
+        </div>
       )}
-      <button
-        data-testid="btn-cerrar-pipeline"
-        onClick={() => {
-          const r = closeAllOpen();
-          setResult(
-            r.processed === 0
-              ? "No hay leads abiertos. Busca leads reales primero."
-              : `${r.qualified} de ${r.processed} leads investigados y calificados · mensajes listos para enviar (ábrelos en cada lead)`
-          );
-        }}
-        className="flex items-center gap-2 rounded-lg border border-director/30 bg-director/10 px-3 py-2 text-[12px] font-semibold text-director transition-colors hover:bg-director/20"
-      >
-        <Zap className="h-3.5 w-3.5" /> Investigar y calificar todos
-      </button>
-      {result && (
+
+      {(ai.note || result) && (
         <span data-testid="control-result" className="text-[11px] text-text-muted">
-          {result}
+          {ai.note ?? result}
         </span>
       )}
     </div>
