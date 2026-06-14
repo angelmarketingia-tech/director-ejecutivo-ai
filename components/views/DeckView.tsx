@@ -8,6 +8,7 @@ import { AgentStation } from "@/components/deck/AgentStation";
 import { ActivityConsole } from "@/components/deck/ActivityConsole";
 import { HotLeads } from "@/components/deck/HotLeads";
 import { PipelineBoard } from "@/components/deck/PipelineBoard";
+import { IS_DEMO } from "@/lib/demoFlag";
 import { UserPlus, Zap, Globe, Loader2, Search } from "lucide-react";
 
 function WebProspect() {
@@ -122,16 +123,18 @@ function ControlBar() {
 
   return (
     <div className="panel flex flex-wrap items-center gap-2 p-3">
-      <button
-        data-testid="btn-generar-lead"
-        onClick={() => {
-          addLead();
-          setResult("Lead (demo) generado y prospectado");
-        }}
-        className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-[12px] font-semibold text-text-muted transition-colors hover:text-text"
-      >
-        <UserPlus className="h-3.5 w-3.5" /> Generar lead demo
-      </button>
+      {IS_DEMO && (
+        <button
+          data-testid="btn-generar-lead"
+          onClick={() => {
+            addLead();
+            setResult("Lead (demo) generado y prospectado");
+          }}
+          className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-[12px] font-semibold text-text-muted transition-colors hover:text-text"
+        >
+          <UserPlus className="h-3.5 w-3.5" /> Generar lead demo
+        </button>
+      )}
       <button
         data-testid="btn-cerrar-pipeline"
         onClick={() => {
