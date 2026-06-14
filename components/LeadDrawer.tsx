@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useDeck } from "@/lib/store";
 import { useEscape } from "@/lib/useEscape";
@@ -16,7 +17,18 @@ import {
   TrendingUp,
   UserPlus,
   ShieldAlert,
+  Microscope,
+  Loader2,
 } from "lucide-react";
+
+interface ResearchData {
+  digitalScore?: number;
+  strengths?: string[];
+  gaps?: string[];
+  needs?: string[];
+  hook?: string;
+  competitorNote?: string;
+}
 
 export function LeadDrawer() {
   const id = useDeck((s) => s.selectedLeadId);
@@ -26,6 +38,50 @@ export function LeadDrawer() {
   const escalateLead = useDeck((s) => s.escalateLead);
   const done = lead && (lead.stage === "won" || lead.stage === "lost");
   useEscape(!!lead, () => close(null));
+
+  const [researching, setResearching] = useState(false);
+  const [research, setResearch] = useState<ResearchData | null>(null);
+  const [researchMsg, setResearchMsg] = useState<string | null>(null);
+
+  // Reinicia la investigación al cambiar de lead
+  useEffect(() => {
+    setResearch(null);
+    setResearchMsg(null);
+    setResearching(false);
+  }, [id]);
+
+  async function investigate() {
+    if (!lead) return;
+    setResearching(true);
+    setResearchMsg(null);
+    setResearch(null);
+    try {
+      const r = await fetch("/api/agents/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent: "research",
+          payload: {
+            company: lead.company,
+            category: lead.category,
+            city: lead.city,
+            website: lead.website,
+            hasWebsite: lead.hasWebsite,
+            rating: lead.rating,
+            reviews: lead.reviews,
+          },
+        }),
+      });
+      const j = await r.json();
+      if (j.ok) setResearch(j.data as ResearchData);
+      else if (j.noKey) setResearchMsg("Falta ANTHROPIC_API_KEY para investigar con IA.");
+      else if (j.budgetExceeded) setResearchMsg("Tope de gasto diario alcanzado.");
+      else setResearchMsg(j.error ?? "No se pudo investigar.");
+    } catch (e: any) {
+      setResearchMsg(String(e?.message ?? e));
+    }
+    setResearching(false);
+  }
 
   return (
     <AnimatePresence>
@@ -124,6 +180,63 @@ export function LeadDrawer() {
                 </div>
               </Section>
 
+              {/* Investigación con IA (ORACLE / Claude) */}
+              {(research || researchMsg) && (
+                <Section title="Investigación IA · ORACLE">
+                  {researchMsg && (
+                    <div className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2.5 text-[12px] text-warn">
+                      {researchMsg}
+                    </div>
+                  )}
+                  {research && (
+                    <div className="space-y-3">
+                      {typeof research.digitalScore === "number" && (
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <span className="text-text-dim">Madurez digital:</span>
+                          <span className="font-semibold text-text">{research.digitalScore}/100</span>
+                        </div>
+                      )}
+                      {research.hook && (
+                        <div className="rounded-lg border border-prospect/40 bg-prospect/10 px-3 py-2.5">
+                          <p className="mb-1 text-[10px] uppercase tracking-wide text-prospect">Ángulo de venta</p>
+                          <p className="text-[12.5px] leading-relaxed text-text">{research.hook}</p>
+                        </div>
+                      )}
+                      {research.gaps && research.gaps.length > 0 && (
+                        <div>
+                          <p className="mb-1.5 text-[11px] text-text-dim">Brechas detectadas</p>
+                          <ul className="space-y-1">
+                            {research.gaps.map((g, i) => (
+                              <li key={i} className="flex gap-1.5 text-[12px] text-text-muted">
+                                <span className="text-hot">•</span>
+                                <span>{g}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {research.needs && research.needs.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {research.needs.map((n, i) => (
+                            <span
+                              key={i}
+                              className="rounded-md border border-border bg-surface px-2 py-1 text-[11px] text-text-muted"
+                            >
+                              {n}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {research.competitorNote && (
+                        <p className="text-[11.5px] italic leading-relaxed text-text-dim">
+                          {research.competitorNote}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </Section>
+              )}
+
               {/* Consentimiento */}
               <Section title="Cumplimiento">
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-surface/60 px-3 py-2.5 text-[12px]">
@@ -138,6 +251,24 @@ export function LeadDrawer() {
 
             {/* Acciones REALES */}
             <div className="border-t border-border p-4">
+              <button
+                data-testid="btn-investigate-ai"
+                disabled={researching}
+                onClick={investigate}
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-scoring/15 py-2.5 text-[13px] font-semibold text-scoring transition-colors hover:bg-scoring/25 disabled:opacity-50"
+              >
+                {researching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Investigando con Claude…
+                  </>
+                ) : (
+                  <>
+                    <Microscope className="h-4 w-4" />
+                    {research ? "Volver a investigar (IA)" : "Investigar con IA"}
+                  </>
+                )}
+              </button>
               <button
                 data-testid="btn-run-pipeline"
                 disabled={!!done}
