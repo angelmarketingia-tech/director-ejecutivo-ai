@@ -51,3 +51,40 @@ export async function saveLeads(items: StoredLead[]): Promise<number> {
 function keyOf(l: StoredLead): string {
   return `${(l.company || "").toLowerCase().trim()}|${(l.city || "").toLowerCase().trim()}`;
 }
+
+/**
+ * Estado REAL del avance de un lead (etapa, score, mensaje preparado, contacto…),
+ * sincronizado entre dispositivos. Clave = empresa|ciudad (igual que los leads).
+ * Esto es lo que TÚ marcas: nunca contiene datos fabricados por el sistema.
+ */
+export interface LeadState {
+  key: string;
+  stage?: string;
+  score?: number;
+  temperature?: string;
+  consent?: string;
+  needs?: string[];
+  outreach?: unknown;
+  updatedAt: number;
+}
+
+const STATE_KEY = "leadState:v1";
+
+export async function getLeadStates(): Promise<Record<string, LeadState>> {
+  if (!kvConfigured()) return {};
+  return (await kvGetJSON<Record<string, LeadState>>(STATE_KEY)) ?? {};
+}
+
+/** Upsert por clave: el más reciente gana. Devuelve cuántos estados quedaron guardados. */
+export async function saveLeadStates(items: LeadState[]): Promise<number> {
+  if (!kvConfigured() || !items?.length) return 0;
+  const all = await getLeadStates();
+  for (const st of items) {
+    if (!st?.key) continue;
+    const prev = all[st.key];
+    // Conserva el más reciente (evita que un dispositivo viejo pise uno nuevo).
+    if (!prev || (st.updatedAt ?? 0) >= (prev.updatedAt ?? 0)) all[st.key] = st;
+  }
+  await kvSetJSON(STATE_KEY, all);
+  return Object.keys(all).length;
+}

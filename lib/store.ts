@@ -130,7 +130,7 @@ interface DeckState {
    * Se detiene en "Calificado". No envía emails, no hace llamadas, no cierra
    * tratos solo. Devuelve la etapa final (normalmente "qualified").
    */
-  runLeadPipeline: (id: string) => PipelineStage;
+  runLeadPipeline: (id: string, opts?: { sync?: boolean }) => PipelineStage;
   /** Investiga + califica + prepara mensaje en todos los leads abiertos. */
   closeAllOpen: () => { processed: number; qualified: number };
   /** Registras TÚ que ya enviaste el contacto (lo marcas como hecho de verdad). */
@@ -244,6 +244,36 @@ function buildOutreach(lead: Lead): NonNullable<Lead["outreach"]> {
   const channel: "whatsapp" | "email" = lead.phone ? "whatsapp" : "email";
   const subject = `${lead.company}: más clientes con una web profesional`;
   return { channel, subject, message, preparedAt: Date.now() };
+}
+
+/** Clave estable de un lead para sincronizar entre dispositivos (igual que en el servidor). */
+const leadKey = (l: { company: string; city?: string }) =>
+  `${l.company.toLowerCase().trim()}|${(l.city || "").toLowerCase().trim()}`;
+
+/**
+ * Sube el AVANCE de los leads (etapa, mensaje preparado, contactado/ganado/perdido) al
+ * servidor (KV) para que se vea en todos los dispositivos. Solo en operación real.
+ * Es fire-and-forget: si falla (sin red/sesión), queda el respaldo local del navegador.
+ */
+function syncStatesToServer(leads: Lead[]) {
+  if (IS_DEMO || typeof window === "undefined" || !leads.length) return;
+  const states = leads.map((l) => ({
+    key: leadKey(l),
+    stage: l.stage,
+    score: l.score,
+    temperature: l.temperature,
+    consent: l.consent,
+    needs: l.needs,
+    outreach: l.outreach,
+    updatedAt: Date.now(),
+  }));
+  fetch("/api/leads/state", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ states }),
+  }).catch(() => {
+    /* offline / sin sesión: el avance queda guardado localmente */
+  });
 }
 
 const stageNext = (s: PipelineStage): PipelineStage => {
@@ -681,9 +711,38 @@ export const useDeck = create<DeckState>()(
   loadServerLeads: async () => {
     try {
       const r = await fetch("/api/leads");
-      if (!r.ok) return;
-      const j = await r.json();
-      if (Array.isArray(j.leads) && j.leads.length) get().addDiscoveredLeads(j.leads);
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j.leads) && j.leads.length) get().addDiscoveredLeads(j.leads);
+      }
+      // Aplica el AVANCE guardado en el servidor (etapa, mensaje, contactado/ganado…),
+      // para que el progreso se vea igual en celular y PC.
+      const sr = await fetch("/api/leads/state");
+      if (sr.ok) {
+        const sj = await sr.json();
+        const states: Record<string, any> = sj?.states ?? {};
+        if (Object.keys(states).length) {
+          set((s) => {
+            const leads = s.leads.map((l) => {
+              const st = states[leadKey(l)];
+              if (!st) return l;
+              return {
+                ...l,
+                stage: (st.stage as Lead["stage"]) ?? l.stage,
+                score: typeof st.score === "number" ? st.score : l.score,
+                temperature: (st.temperature as Lead["temperature"]) ?? l.temperature,
+                consent: (st.consent as Lead["consent"]) ?? l.consent,
+                needs: Array.isArray(st.needs) ? st.needs : l.needs,
+                outreach: (st.outreach as Lead["outreach"]) ?? l.outreach,
+              };
+            });
+            return {
+              leads,
+              metrics: recomputeMetrics({ leads, emails: s.emails, whatsapp: s.whatsapp, calls: s.calls }),
+            };
+          });
+        }
+      }
     } catch {
       /* sin red / sin sesión: no pasa nada */
     }
@@ -755,7 +814,7 @@ export const useDeck = create<DeckState>()(
     return n;
   },
 
-  runLeadPipeline: (id) => {
+  runLeadPipeline: (id, opts) => {
     const s = get();
     const idx = s.leads.findIndex((l) => l.id === id);
     if (idx < 0) return "lost";
@@ -806,20 +865,26 @@ export const useDeck = create<DeckState>()(
     const leads = [...s.leads];
     leads[idx] = lead;
     set({ leads, events });
+    // Sincroniza el avance entre dispositivos (salvo que el lote lo haga en bloque).
+    if (opts?.sync !== false) syncStatesToServer([lead]);
     return lead.stage;
   },
 
   closeAllOpen: () => {
     const open = get().leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
     let qualified = 0;
+    const ids = open.map((l) => l.id);
     for (const l of open) {
-      const end = get().runLeadPipeline(l.id);
+      const end = get().runLeadPipeline(l.id, { sync: false });
       if (end === "qualified") qualified++;
     }
+    // Una sola subida con todo el lote (evita una petición por lead).
+    const changed = get().leads.filter((l) => ids.includes(l.id));
+    syncStatesToServer(changed);
     return { processed: open.length, qualified };
   },
 
-  markContacted: (id) =>
+  markContacted: (id) => {
     set((s) => {
       const idx = s.leads.findIndex((l) => l.id === id);
       if (idx < 0) return {} as Partial<DeckState>;
@@ -869,9 +934,12 @@ export const useDeck = create<DeckState>()(
         events: [evt("director", "success", `Contacto registrado por ti: ${lead.company}`), ...s.events].slice(0, 80),
         metrics: recomputeMetrics({ leads, emails, whatsapp, calls: s.calls }),
       };
-    }),
+    });
+    const updated = get().leads.find((l) => l.id === id);
+    if (updated) syncStatesToServer([updated]);
+  },
 
-  advanceLead: (id, stage) =>
+  advanceLead: (id, stage) => {
     set((s) => {
       const idx = s.leads.findIndex((l) => l.id === id);
       if (idx < 0) return {} as Partial<DeckState>;
@@ -888,7 +956,10 @@ export const useDeck = create<DeckState>()(
         ].slice(0, 80),
         metrics: recomputeMetrics({ leads, emails: s.emails, whatsapp: s.whatsapp, calls: s.calls }),
       };
-    }),
+    });
+    const updated = get().leads.find((l) => l.id === id);
+    if (updated) syncStatesToServer([updated]);
+  },
 
   escalateLead: (id) =>
     set((s) => {
