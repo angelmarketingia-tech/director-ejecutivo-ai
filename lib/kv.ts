@@ -3,8 +3,9 @@
  * Se activa solo si KV_REST_API_URL + KV_REST_API_TOKEN están configurados
  * (Vercel los inyecta al crear un KV en Storage). Si no, queda inactivo.
  */
-const URL = process.env.KV_REST_API_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN;
+// Acepta los nombres de Vercel KV y los de Upstash (según el proveedor que conectes).
+const URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
 export function kvConfigured(): boolean {
   return !!(URL && TOKEN);
