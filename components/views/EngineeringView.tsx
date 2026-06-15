@@ -8,7 +8,151 @@ import { StaffCard } from "@/components/StaffCard";
 import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
 import { IS_DEMO } from "@/lib/demoFlag";
-import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket } from "lucide-react";
+import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket, Globe, Loader2, Download, ExternalLink, Copy, Check } from "lucide-react";
+
+/** Generador de sitios web reales (proyecto entregable): crea un HTML autónomo del negocio. */
+function WebsiteForge() {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("Restaurante");
+  const [city, setCity] = useState("Villavicencio");
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [html, setHtml] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function generate() {
+    if (!name.trim()) return;
+    setLoading(true);
+    setMsg(null);
+    setHtml(null);
+    try {
+      const r = await fetch("/api/projects/website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, category, city, phone }),
+      });
+      let j: any;
+      try {
+        j = await r.json();
+      } catch {
+        setMsg(r.status === 504 ? "Tardó demasiado (límite 60s). Reintenta." : "Respuesta inválida del servidor.");
+        setLoading(false);
+        return;
+      }
+      if (j.ok) {
+        setHtml(j.html);
+        setMsg("✅ Sitio web generado. Vista previa abajo · descárgalo o ábrelo en pestaña nueva.");
+      } else if (j.noKey) setMsg("⚠️ Falta ANTHROPIC_API_KEY en Vercel.");
+      else if (j.budgetExceeded) setMsg("⛔ Tope de gasto diario alcanzado.");
+      else setMsg(`Error: ${j.error ?? "desconocido"}`);
+    } catch (e: any) {
+      setMsg(`Error: ${String(e?.message ?? e)}`);
+    }
+    setLoading(false);
+  }
+
+  function download() {
+    if (!html) return;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") || "sitio"}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function openTab() {
+    if (!html) return;
+    const w = window.open();
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+  }
+
+  async function copy() {
+    if (!html) return;
+    try {
+      await navigator.clipboard.writeText(html);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* sin portapapeles */
+    }
+  }
+
+  return (
+    <div className="panel p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Globe className="h-4 w-4 text-[#34D399]" />
+        <p className="text-[13px] font-semibold text-text">Crear sitio web (demo para un cliente)</p>
+        <span className="ml-auto rounded-md bg-[#34D39915] px-2 py-0.5 text-[10px] font-semibold text-[#34D399]">proyecto real</span>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <input
+          data-testid="web-forge-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nombre del negocio (ej. Donde Riaño)"
+          className="rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-[#34D399]/50"
+        />
+        <input
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Rubro (ej. Restaurante)"
+          className="rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-[#34D399]/50"
+        />
+        <input
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          placeholder="Ciudad"
+          className="rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-[#34D399]/50"
+        />
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="WhatsApp del negocio (opcional)"
+          className="rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-[#34D399]/50"
+        />
+      </div>
+      <button
+        data-testid="btn-web-forge"
+        onClick={generate}
+        disabled={loading || !name.trim()}
+        className="mt-2 flex items-center gap-2 rounded-lg border border-[#34D399]/40 bg-[#34D399]/15 px-3 py-2 text-[12px] font-semibold text-[#34D399] transition-colors hover:bg-[#34D399]/25 disabled:opacity-40"
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
+        {loading ? "Generando sitio web…" : "Generar sitio web"}
+      </button>
+      {msg && <p data-testid="web-forge-msg" className="mt-2 text-[11px] text-text-muted">{msg}</p>}
+
+      {html && (
+        <div className="mt-3">
+          <div className="mb-2 flex flex-wrap gap-2">
+            <button onClick={download} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+              <Download className="h-3.5 w-3.5" /> Descargar .html
+            </button>
+            <button onClick={openTab} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir en pestaña
+            </button>
+            <button onClick={copy} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+              {copied ? <Check className="h-3.5 w-3.5 text-ok" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copiado" : "Copiar HTML"}
+            </button>
+          </div>
+          <iframe
+            data-testid="web-forge-preview"
+            title="Vista previa del sitio"
+            srcDoc={html}
+            className="h-[460px] w-full rounded-lg border border-border bg-white"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const SPRINT = [
   { col: "Backlog", tint: "#8A97B8", items: ["Rate limiting API", "Migrar a Prisma 6", "Webhooks de Stripe"] },
@@ -50,6 +194,7 @@ export function EngineeringView() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
         <div className="flex flex-col gap-4">
+          <WebsiteForge />
           <div>
             <p className="label-eyebrow mb-2 px-1">Agentes autónomos · pulsa “Ejecutar” para correr una tarea con subagentes</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
