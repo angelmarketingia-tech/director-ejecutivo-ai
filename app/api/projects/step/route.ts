@@ -56,12 +56,10 @@ imágenes reales, gradientes y tipografía — NO con miles de líneas. Apunta a
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
 
-const REVIEW_SYSTEM = `Eres DIRECTOR DE ARTE + QA front-end senior. Recibes un PROJECT.md y un HTML. Tu trabajo es
-ELEVAR la calidad visual y corregir errores SIN simplificar. Verifica: criterios de aceptación, cero errores
-de JavaScript, responsivo sin scroll horizontal, accesibilidad y consistencia del sistema de diseño.
-Mejora detalles de pulido (espaciados, jerarquía tipográfica, estados hover, animaciones sutiles) si aportan.
-CONSERVA todo el diseño, fuentes y animaciones; NUNCA acortes ni degrades el resultado. DEVUELVES la versión
-final pulida en "html" y una checklist en "notes". Español de Colombia.`;
+const REVIEW_SYSTEM = `Eres DIRECTOR DE ARTE + QA front-end senior. Recibes un PROJECT.md y un HTML ya construido.
+NO reescribas el HTML (es grande). Tu trabajo es AUDITARLO y reportar en "notes" una checklist concreta:
+qué criterios de aceptación cumple, posibles errores de JS, problemas de responsive/accesibilidad/contraste,
+y mejoras puntuales recomendadas. Sé específico y honesto. Español de Colombia. Devuelve solo "notes".`;
 
 const SCHEMAS = {
   architect: {
@@ -83,8 +81,8 @@ const SCHEMAS = {
   review: {
     type: "object",
     additionalProperties: false,
-    properties: { html: { type: "string" }, notes: { type: "array", items: { type: "string" } } },
-    required: ["html", "notes"],
+    properties: { notes: { type: "array", items: { type: "string" } } },
+    required: ["notes"],
   },
 } as const;
 
@@ -142,9 +140,9 @@ export async function POST(req: Request) {
     review: {
       system: REVIEW_SYSTEM,
       model: "claude-haiku-4-5",
-      input: `PROJECT.md:\n${projectMd}\n\n--- HTML a revisar ---\n${code}`,
+      input: `PROJECT.md:\n${projectMd}\n\n--- HTML a auditar ---\n${code}`,
       schema: SCHEMAS.review,
-      maxTokens: 13000,
+      maxTokens: 1800,
     },
   };
 

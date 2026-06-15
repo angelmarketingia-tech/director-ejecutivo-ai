@@ -59,13 +59,10 @@ function ProjectBuilder() {
     if (!b.ok) return fail(b);
     setHtml(b.html);
 
-    // 3) QA → revisa y corrige
+    // 3) QA → audita y reporta (NO reescribe el HTML; conserva el del build)
     setPhase("review");
     const r = await step({ phase: "review", projectMd: a.projectMd, code: b.html });
-    if (r.ok) {
-      setHtml(r.html);
-      setNotes(Array.isArray(r.notes) ? r.notes : []);
-    }
+    if (r.ok && Array.isArray(r.notes)) setNotes(r.notes);
     setPhase("done");
     setMsg("✅ Proyecto construido y revisado. Vista previa abajo (tu localhost) · descarga los archivos.");
   }
