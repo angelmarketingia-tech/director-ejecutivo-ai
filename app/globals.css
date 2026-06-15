@@ -42,12 +42,47 @@ body {
   background-clip: content-box;
 }
 
+/* ── Aurora viva de fondo (capa fija, detrás de todo) ── */
+.aurora {
+  background:
+    radial-gradient(38% 42% at 18% 22%, rgba(34, 211, 238, 0.14), transparent 60%),
+    radial-gradient(34% 38% at 82% 28%, rgba(167, 139, 250, 0.14), transparent 60%),
+    radial-gradient(44% 46% at 62% 88%, rgba(232, 199, 102, 0.08), transparent 60%),
+    radial-gradient(40% 40% at 30% 80%, rgba(52, 211, 153, 0.07), transparent 60%);
+  filter: blur(46px) saturate(1.1);
+  animation: aurora 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes aurora {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2.5%, -2%, 0) scale(1.08) rotate(0.5deg); }
+  100% { transform: translate3d(-2.5%, 2.5%, 0) scale(1.05) rotate(-0.5deg); }
+}
+
 @layer components {
+  /* Panel "glass" con borde holográfico (gradiente en el filo, sin afectar layout) */
   .panel {
-    @apply rounded-2xl border border-border bg-surface/70 backdrop-blur-xl;
+    @apply relative rounded-2xl border border-border bg-surface/70 backdrop-blur-xl;
+  }
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.4), rgba(167, 139, 250, 0.16) 38%, transparent 68%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.7;
   }
   .panel-tight {
     @apply rounded-xl border border-border bg-surface/60;
+  }
+  /* Texto con brillo holográfico para títulos destacados */
+  .glow-text {
+    text-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
   }
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide;

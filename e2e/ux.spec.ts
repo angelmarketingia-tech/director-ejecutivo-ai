@@ -125,6 +125,29 @@ test("UX · configuración: presets, canales, subagentes y toggles de agentes", 
   await assertClean(errors);
 });
 
+test("UX · Deck muestra Seguimientos pendientes", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-comercial").click();
+  await expect(page.getByText("Seguimientos pendientes")).toBeVisible();
+  await assertClean(errors);
+});
+
+test("UX · Desarrollo muestra el equipo real (Juan y David)", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-ingenieria").click();
+  await expect(page.getByText("Equipo real · Juan y David")).toBeVisible();
+  await expect(page.getByText("Constructor de proyectos (multi-agente)")).toBeVisible();
+  await assertClean(errors);
+});
+
+test("UX · Comercial → WhatsApp muestra la bandeja sin errores", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-comercial").click();
+  await page.getByTestId("subnav-whatsapp").click();
+  await expect(page.getByText("Bandeja de WhatsApp")).toBeVisible();
+  await assertClean(errors);
+});
+
 test("UX · Desarrollo: generador de sitios web visible y responde al generar", async ({ page }) => {
   const errors = spyErrors(page);
   await page.getByTestId("area-ingenieria").click();

@@ -34,7 +34,8 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-bg px-4">
-      <div className="pointer-events-none fixed inset-0 bg-grid-faint bg-[size:48px_48px] opacity-[0.25]" />
+      <div className="aurora pointer-events-none fixed inset-0" />
+      <div className="pointer-events-none fixed inset-0 bg-grid-faint bg-[size:48px_48px] opacity-[0.18]" />
       <div className="pointer-events-none fixed inset-0 bg-radial-deck" />
 
       <form
@@ -46,7 +47,7 @@ export default function LoginPage() {
             <Radio className="h-5 w-5 text-director" />
           </div>
           <div className="leading-tight">
-            <p className="text-[15px] font-semibold tracking-tight text-text">NEXUS HQ</p>
+            <p className="glow-text text-[15px] font-semibold tracking-tight text-text">NEXUS HQ</p>
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-director">
               Centro de Mando
             </p>

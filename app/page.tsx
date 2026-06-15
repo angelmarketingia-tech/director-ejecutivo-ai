@@ -25,7 +25,8 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen bg-bg">
-      <div className="pointer-events-none fixed inset-0 bg-grid-faint bg-[size:48px_48px] opacity-[0.25]" />
+      <div className="aurora pointer-events-none fixed inset-0" />
+      <div className="pointer-events-none fixed inset-0 bg-grid-faint bg-[size:48px_48px] opacity-[0.18]" />
       <div className="pointer-events-none fixed inset-0 bg-radial-deck" />
 
       <DemoClock />
