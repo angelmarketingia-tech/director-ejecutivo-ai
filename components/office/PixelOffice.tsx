@@ -96,7 +96,7 @@ export function PixelOffice() {
       const rooms = 6; // 5 áreas + ATLAS
       const rows = Math.ceil(rooms / cols);
       const winH = Math.round(Math.min(150, W * 0.13));
-      const daptuxH = 180;
+      const daptuxH = W < 860 ? 300 : 224;
       const rowH = 210;
       H = winH + daptuxH + rows * rowH;
       cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
@@ -232,49 +232,61 @@ export function PixelOffice() {
       hits.push({ x: rx, y: ry, w: rw, h: rh, area: atlas ? "hq" : r!.area });
     }
 
-    function daptuxPerson(cx: number, topY: number, p: Daptux, idx: number) {
+    function daptuxPerson(cx: number, topY: number, p: Daptux, idx: number, vip: boolean) {
       const working = !!p.startedAt;
-      character(cx, topY + 12, { id: p.id, name: p.name, color: p.color, task: p.task, working }, idx);
-      c2d.fillStyle = "#eaf0ff"; c2d.font = "700 11px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText(p.name, cx, topY + 58);
-      c2d.fillStyle = p.color; c2d.font = "600 8px ui-sans-serif"; c2d.fillText(p.role.toUpperCase(), cx, topY + 68);
+      // zona VIP (alfombra dorada bajo el CEO)
+      if (vip) { c2d.fillStyle = "rgba(232,199,102,0.10)"; rr(cx - 46, topY + 4, 92, 88, 8); c2d.fill(); c2d.strokeStyle = "rgba(232,199,102,0.45)"; c2d.lineWidth = 1; c2d.stroke(); }
+      const deskY = topY + 52, deskW = 60, deskX = cx - deskW / 2;
+      R(cx - 10, deskY - 6, 20, 9, "#22262f"); // silla
+      character(cx, topY + 16, { id: p.id, name: p.name, color: p.color, task: p.task, working }, idx);
+      // monitor
+      const mY = deskY - 26; R(cx - 19, mY, 38, 24, "#0a0d15"); R(cx - 16, mY + 3, 32, 18, working ? "#0e1726" : "#111521");
+      if (working) { const pal = ["#5ad1ff", "#a78bfa", "#34d399", "#fbbf24"]; for (let i = 0; i < 3; i++) { const len = 6 + ((frame / 6 + i * 7 + idx * 4) % 18); R(cx - 13, mY + 5 + i * 5, len, 2, pal[(i + idx) % 4]); } }
+      R(cx - 4, mY + 24, 8, 4, "#0a0d15");
+      // escritorio propio (dorado si VIP)
+      R(deskX, deskY, deskW, 7, vip ? "#7a5a2a" : "#6b4b2a"); if (vip) R(deskX, deskY, deskW, 2, "#E8C766");
+      R(deskX, deskY + 7, 3, 12, "#553c22"); R(deskX + deskW - 3, deskY + 7, 3, 12, "#553c22");
+      if (working && !reduce) { const up = (frame >> 3) & 1; R(cx - 8, deskY - 5 - up, 4, 4, "#f0c089"); R(cx + 4, deskY - 5 - (up ^ 1), 4, 4, "#f0c089"); }
+      // nombre (con estrella VIP) + rol
+      c2d.fillStyle = "#eaf0ff"; c2d.font = "700 11px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText((vip ? "★ " : "") + p.name, cx, topY + 66);
+      c2d.fillStyle = p.color; c2d.font = "600 7.5px ui-sans-serif"; c2d.fillText(p.role.toUpperCase(), cx, topY + 76);
       // burbuja: qué hace + hace cuánto (en vivo)
-      const txt = working ? `${(p.task || "Trabajando").slice(0, 26)} · hace ${ago(p.startedAt)}` : "disponible";
+      const txt = working ? `${(p.task || "Trabajando").slice(0, 22)} · hace ${ago(p.startedAt)}` : "disponible";
       c2d.font = "500 8px ui-monospace, monospace";
-      const tw = Math.min(180, c2d.measureText(txt).width + 14);
-      c2d.fillStyle = working ? "rgba(12,30,22,0.95)" : "rgba(20,24,34,0.9)"; rr(cx - tw / 2, topY - 8, tw, 15, 4); c2d.fill();
+      const tw = Math.min(150, c2d.measureText(txt).width + 12);
+      c2d.fillStyle = working ? "rgba(12,30,22,0.95)" : "rgba(20,24,34,0.9)"; rr(cx - tw / 2, topY - 4, tw, 15, 4); c2d.fill();
       c2d.strokeStyle = working ? "rgba(52,211,153,0.5)" : "rgba(90,103,140,0.4)"; c2d.lineWidth = 1; c2d.stroke();
-      c2d.fillStyle = working ? "#9af0c8" : "#8aa0c0"; c2d.textAlign = "center"; c2d.fillText(txt, cx, topY + 3);
+      c2d.fillStyle = working ? "#9af0c8" : "#8aa0c0"; c2d.textAlign = "center"; c2d.fillText(txt, cx, topY + 7);
     }
 
     function drawDaptux(top: number, h: number) {
       const rx = 6, ry = top + 6, rw = W - 12, rh = h - 12;
-      // sala premium
       const g = c2d.createLinearGradient(0, ry, 0, ry + rh); g.addColorStop(0, "#0f1626"); g.addColorStop(1, "#141d31");
       c2d.fillStyle = g; c2d.fillRect(rx, ry, rw, rh);
       const tile = 30; for (let y = ry; y < ry + rh; y += tile) for (let x = rx; x < rx + rw; x += tile) if (((x / tile + y / tile) | 0) % 2) R(x, y, tile, tile, "#101a2c");
       c2d.strokeStyle = "rgba(232,199,102,0.5)"; c2d.lineWidth = 2; c2d.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
-      // letrero
-      c2d.fillStyle = "rgba(8,12,22,0.9)"; rr(rx + 12, ry + 10, 168, 20, 5); c2d.fill();
+      c2d.fillStyle = "rgba(8,12,22,0.9)"; rr(rx + 12, ry + 10, 174, 20, 5); c2d.fill();
       c2d.fillStyle = "#E8C766"; c2d.font = "800 12px ui-sans-serif"; c2d.textAlign = "left"; c2d.fillText("🏢 OFICINA DAPTUX", rx + 20, ry + 24);
-      decor("sofa", rx, ry, rw, rh, "#E8C766"); decor("tv", rx + 10, ry, rw, rh, "#22D3EE");
 
       const dx = dataRef.current.daptux;
       const ceos = dx.filter((p) => p.id === "angel" || p.id === "david");
       const devs = dx.filter((p) => p.id === "andres" || p.id === "juan");
-      const baseY = ry + 56;
-      drawCluster(rx + rw * 0.27, baseY, "DIRECCIÓN", ceos, "#E8C766");
-      drawCluster(rx + rw * 0.72, baseY, "PROGRAMADORES CREATIVOS", devs, "#22D3EE");
-      hits.push({ x: rx, y: ry, w: rw, h: rh, area: "ingenieria" }); // click → Desarrollo (panel del equipo)
+      const baseY = ry + 60;
+      if (W >= 860) {
+        drawCluster(rx + rw * 0.27, baseY, "DIRECCIÓN", ceos, "#E8C766", true);
+        drawCluster(rx + rw * 0.73, baseY, "PROGRAMADORES CREATIVOS", devs, "#22D3EE", false);
+      } else {
+        drawCluster(rx + rw * 0.5, baseY, "DIRECCIÓN", ceos, "#E8C766", true);
+        drawCluster(rx + rw * 0.5, baseY + 118, "PROGRAMADORES CREATIVOS", devs, "#22D3EE", false);
+      }
+      hits.push({ x: rx, y: ry, w: rw, h: rh, area: "ingenieria" });
     }
 
-    function drawCluster(cx: number, topY: number, label: string, people: Daptux[], color: string) {
-      const sep = 42;
+    function drawCluster(cx: number, topY: number, label: string, people: Daptux[], color: string, vip: boolean) {
+      const sep = 100; // escritorios separados → los letreros caben sin encimarse
       const cxs = people.length === 2 ? [cx - sep, cx + sep] : [cx];
-      // mesa larga compartida ("pegados")
-      const deskW = sep * 2 + 70, deskX = cx - deskW / 2, deskY = topY + 50;
-      R(deskX, deskY, deskW, 8, "#6b4b2a"); R(deskX, deskY + 8, 3, 14, "#553c22"); R(deskX + deskW - 3, deskY + 8, 3, 14, "#553c22");
-      people.forEach((p, i) => daptuxPerson(cxs[i], topY, p, i + (label[0] === "D" ? 0 : 5)));
-      c2d.fillStyle = color; c2d.font = "700 8px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText(label, cx, deskY + 32);
+      people.forEach((p, i) => daptuxPerson(cxs[i], topY, p, i + (vip ? 0 : 5), vip));
+      c2d.fillStyle = color; c2d.font = "700 8.5px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText((vip ? "⭐ " : "") + label, cx, topY + 96);
     }
 
     function loop() {

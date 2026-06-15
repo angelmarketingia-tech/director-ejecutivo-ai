@@ -7,6 +7,7 @@ import { DeptStation } from "@/components/deck/DeptStation";
 import { StaffCard } from "@/components/StaffCard";
 import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
+import { BillingView } from "@/components/BillingView";
 import { fmtMoney } from "@/lib/utils";
 import { IS_DEMO } from "@/lib/demoFlag";
 import { CalendarClock, CheckCircle2, TrendingUp, Megaphone, Code2, Target, Users } from "lucide-react";
@@ -51,6 +52,9 @@ export function BoardView() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Facturación: cotizaciones, cobros y MRR */}
+      <BillingView />
+
       {/* KPIs cruzados */}
       <div className="panel flex flex-wrap items-stretch divide-x divide-border overflow-hidden">
         {kpis.map((k) => (
