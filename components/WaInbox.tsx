@@ -5,7 +5,7 @@ import { timeAgo } from "@/lib/utils";
 import { Inbox, Send, Loader2, Bot, User, ArrowLeft } from "lucide-react";
 
 interface WaMsg { id: string; dir: "in" | "out"; by: "client" | "bot" | "human"; text: string; at: number; status?: string }
-interface WaChat { id: string; name?: string; botEnabled: boolean; messages: WaMsg[]; lastAt: number }
+interface WaChat { id: string; name?: string; botEnabled: boolean; hot?: boolean; messages: WaMsg[]; lastAt: number }
 
 export function WaInbox() {
   const [chats, setChats] = useState<WaChat[]>([]);
@@ -27,7 +27,8 @@ export function WaInbox() {
     try {
       const r = await fetch("/api/whatsapp/chats");
       const j = await r.json();
-      if (j.ok) setChats(j.chats);
+      // Calientes primero, luego por actividad reciente.
+      if (j.ok) setChats((j.chats as WaChat[]).sort((a, b) => (b.hot ? 1 : 0) - (a.hot ? 1 : 0) || b.lastAt - a.lastAt));
     } catch {}
     setLoading(false);
   }
@@ -71,6 +72,7 @@ export function WaInbox() {
               return (
                 <button key={c.id} onClick={() => setSel(c.id)} className={`flex w-full flex-col items-start gap-0.5 border-b border-border/60 px-3 py-2.5 text-left hover:bg-surface/60 ${sel === c.id ? "bg-surface/80" : ""}`}>
                   <div className="flex w-full items-center gap-2">
+                    {c.hot && <span title="Lead caliente">🔥</span>}
                     <span className="truncate text-[12px] font-semibold text-text">{c.name || c.id}</span>
                     {!c.botEnabled && <span className="rounded bg-hot/15 px-1 py-0.5 text-[8px] font-semibold text-hot">TÚ</span>}
                     <span className="ml-auto shrink-0 text-[9px] text-text-dim">{timeAgo(c.lastAt)}</span>

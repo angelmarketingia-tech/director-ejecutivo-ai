@@ -188,8 +188,23 @@ function WebsiteForge() {
   const [html, setHtml] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pubUrl, setPubUrl] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function publish() {
+    if (!html) return;
+    setPublishing(true);
+    try {
+      const r = await fetch("/api/projects/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, html }) });
+      const j = await r.json();
+      if (j.ok) setPubUrl(j.url); else setMsg(`⚠️ ${j.error ?? "no se pudo publicar"}`);
+    } catch (e: any) { setMsg(`⚠️ ${String(e?.message ?? e)}`); }
+    setPublishing(false);
+  }
 
   async function generate() {
+    setPubUrl(null);
     if (!name.trim()) return;
     setLoading(true);
     setMsg(null);
@@ -309,7 +324,28 @@ function WebsiteForge() {
             <button onClick={copy} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
               {copied ? <Check className="h-3.5 w-3.5 text-ok" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copiado" : "Copiar HTML"}
             </button>
+            <button data-testid="btn-publish" onClick={publish} disabled={publishing} className="flex items-center gap-1.5 rounded-lg border border-[#34D399]/40 bg-[#34D399]/15 px-2.5 py-1.5 text-[11px] font-semibold text-[#34D399] hover:bg-[#34D399]/25 disabled:opacity-40">
+              {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />} Publicar (link público)
+            </button>
           </div>
+
+          {pubUrl && (
+            <div className="mb-2 rounded-lg border border-[#34D399]/40 bg-[#34D399]/10 p-3">
+              <p className="mb-1 text-[10px] uppercase tracking-wide text-[#34D399]">Link público para enviar al cliente</p>
+              <a href={pubUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-[12px] text-text underline">{pubUrl}</a>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button onClick={() => { navigator.clipboard.writeText(pubUrl).then(() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 1800); }).catch(() => {}); }} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+                  {linkCopied ? <Check className="h-3.5 w-3.5 text-ok" /> : <Copy className="h-3.5 w-3.5" />} {linkCopied ? "Copiado" : "Copiar link"}
+                </button>
+                {phone && (
+                  <a href={`https://wa.me/${phone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Hola 👋 te dejé una muestra de cómo quedaría la web de ${name}: ${pubUrl}`)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-email/30 bg-email/15 px-2.5 py-1.5 text-[11px] font-semibold text-email hover:bg-email/25">
+                    <ExternalLink className="h-3.5 w-3.5" /> Enviar por WhatsApp
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
           <iframe
             data-testid="web-forge-preview"
             title="Vista previa del sitio"

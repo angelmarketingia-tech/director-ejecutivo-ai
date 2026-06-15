@@ -17,8 +17,19 @@ export interface WaChat {
   id: string; // teléfono / id de WhatsApp
   name?: string;
   botEnabled: boolean; // si false, el humano lleva el chat
+  hot?: boolean; // señal de intención de compra → atender rápido
   messages: WaMsg[];
   lastAt: number;
+}
+
+/** Detecta señales de compra en un mensaje (lead caliente). */
+export function isHotSignal(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return [
+    "me interesa", "cómo pago", "como pago", "cuánto debo", "cuanto debo", "quiero la", "quiero una",
+    "agendar", "agenda", "cuándo", "cuando empez", "lo quiero", "hagámoslo", "hagamoslo", "contratar",
+    "el demo", "el mockup", "envíame", "enviame", "número de cuenta", "numero de cuenta", "transferencia",
+  ].some((k) => t.includes(k));
 }
 
 const KEY = "wa:chats:v1";
@@ -59,6 +70,7 @@ export async function addInbound(id: string, name: string | undefined, text: str
   const chats = await readAll();
   const c = findOrCreate(chats, id, name);
   c.messages.push({ id: mid(), dir: "in", by: "client", text, at: Date.now() });
+  if (isHotSignal(text)) c.hot = true; // señal de compra → marcar caliente
   touch(c);
   await writeAll(chats);
   return c;
@@ -102,5 +114,5 @@ export async function markSent(msgIds: string[]): Promise<void> {
 export async function setChatBot(id: string, on: boolean): Promise<void> {
   const chats = await readAll();
   const c = chats.find((x) => x.id === id);
-  if (c) { c.botEnabled = on; await writeAll(chats); }
+  if (c) { c.botEnabled = on; if (!on) c.hot = false; await writeAll(chats); }
 }

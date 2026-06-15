@@ -7,6 +7,7 @@ import { DirectorCore } from "@/components/deck/DirectorCore";
 import { AgentStation } from "@/components/deck/AgentStation";
 import { ActivityConsole } from "@/components/deck/ActivityConsole";
 import { HotLeads } from "@/components/deck/HotLeads";
+import { FollowUps } from "@/components/deck/FollowUps";
 import { PipelineBoard } from "@/components/deck/PipelineBoard";
 import { IS_DEMO } from "@/lib/demoFlag";
 import { UserPlus, Zap, Globe, Loader2, Search } from "lucide-react";
@@ -224,6 +225,7 @@ export function DeckView() {
       {/* Rail derecho */}
       <div className="flex flex-col gap-4">
         <HotLeads />
+        <FollowUps />
         <div className="min-h-[420px] flex-1">
           <ActivityConsole />
         </div>
