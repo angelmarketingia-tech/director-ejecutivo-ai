@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { NeuralBackground } from "@/components/fx/NeuralBackground";
 import { PixelOffice } from "@/components/office/PixelOffice";
+import { SummaryPanel } from "@/components/SummaryPanel";
 import { useDeck } from "@/lib/store";
 import { AREAS } from "@/lib/departments";
 import type { Area } from "@/lib/types";
@@ -66,6 +67,9 @@ export function HQView() {
           </div>
         </div>
       </div>
+
+      {/* Resumen ejecutivo (KPIs) — solo admin */}
+      <SummaryPanel />
 
       {/* Oficina virtual pixel-art animada */}
       <PixelOffice />

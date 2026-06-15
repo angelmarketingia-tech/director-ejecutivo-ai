@@ -5,7 +5,7 @@ import { timeAgo } from "@/lib/utils";
 import { Bot, Loader2, Save, Send, Plus, Trash2, MessageCircle, CheckCircle2, XCircle, Power } from "lucide-react";
 
 interface FAQ { q: string; a: string }
-interface KB { businessName: string; about: string; services: string; pricing: string; faqs: FAQ[]; tone: string; optOutWord: string; autoReplyEnabled: boolean; }
+interface KB { businessName: string; about: string; services: string; pricing: string; faqs: FAQ[]; tone: string; optOutWord: string; autoReplyEnabled: boolean; extraNotes?: string; }
 interface LogE { at: number; from: string; inbound: string; outbound: string; auto: boolean }
 
 const WEBHOOK_URL = "https://director-ejecutivo-ai.vercel.app/api/webhooks/whatsapp";
@@ -133,6 +133,32 @@ export function WhatsAppBot() {
           {field("Servicios", "services", 4)}
           {field("Precios", "pricing", 4)}
           {field("Palabra de baja (opt-out)", "optOutWord", 1)}
+        </div>
+
+        {/* Recomendaciones / archivos */}
+        <div className="mt-3">
+          <div className="mb-1 flex items-center gap-2">
+            <p className="label-eyebrow">Recomendaciones / contexto extra (la IA lo usa)</p>
+            {admin && (
+              <label className="cursor-pointer rounded-md border border-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-muted hover:text-text">
+                + Cargar archivo (.txt/.md)
+                <input type="file" accept=".txt,.md,text/plain,text/markdown" className="hidden" onChange={async (e) => {
+                  const f = e.target.files?.[0]; if (!f || !kb) return;
+                  const txt = await f.text();
+                  setKb({ ...kb, extraNotes: ((kb.extraNotes || "") + "\n\n# " + f.name + "\n" + txt).slice(0, 12000) });
+                  e.currentTarget.value = "";
+                }} />
+              </label>
+            )}
+          </div>
+          <textarea
+            value={kb.extraNotes ?? ""}
+            onChange={(e) => setKb({ ...kb, extraNotes: e.target.value })}
+            disabled={!admin}
+            rows={4}
+            placeholder="Ej. Ofrecemos 20% de descuento por pago anticipado. Casos de éxito: ... Horarios de atención: ..."
+            className="w-full resize-none rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-email/50 disabled:opacity-70"
+          />
         </div>
 
         {/* FAQs */}

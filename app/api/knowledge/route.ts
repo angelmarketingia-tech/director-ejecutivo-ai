@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   for (const k of ["businessName", "about", "services", "pricing", "tone", "optOutWord"]) {
     if (typeof d?.[k] === "string") patch[k] = vstr(d[k], 6000) ?? "";
   }
+  if (typeof d?.extraNotes === "string") patch.extraNotes = d.extraNotes.slice(0, 12000);
   if (typeof d?.autoReplyEnabled === "boolean") patch.autoReplyEnabled = d.autoReplyEnabled;
   if (Array.isArray(d?.faqs)) {
     patch.faqs = d.faqs
