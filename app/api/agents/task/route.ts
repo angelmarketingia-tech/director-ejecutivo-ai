@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     }>({
       system: buildAreaAgentSystem(name, role, area),
       model,
-      input: `Tarea (de inicio a fin): ${task}\n\nEntrega un resultado COMPLETO, bien estructurado y accionable, listo para usar (con el detalle necesario, sin relleno). Extensión adecuada: máximo ~1300 palabras.`,
+      input: `Tarea (de inicio a fin): ${task}\n\nEl campo "deliverable" DEBE contener el ENTREGABLE COMPLETO y detallado (NO un título ni un resumen): texto final listo para usar, bien estructurado y accionable, ~400-1300 palabras. Usa "summary" solo para una frase de cierre. No dejes el deliverable vacío ni como encabezado.`,
       schema: DELIVERABLE_SCHEMA as unknown as Record<string, unknown>,
       subagents,
       maxTokens: 6000,
