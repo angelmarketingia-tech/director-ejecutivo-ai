@@ -104,9 +104,9 @@ export async function runWithSubagents<T = unknown>(opts: {
       `${opts.input}\n\n--- Borrador previo ---\n${draftStr}\n\n` +
       `--- Críticas de subagentes (intégralas para mejorar la calidad) ---\n` +
       JSON.stringify(reports, null, 2) +
-      `\n\nDevuelve la versión final mejorada que resuelve los problemas señalados.`,
+      `\n\nDevuelve la versión final mejorada que resuelve los problemas señalados. Sé conciso y accionable.`,
     schema: opts.schema,
-    effort: "medium",
+    effort: "low",
     maxTokens: opts.maxTokens,
   });
 
