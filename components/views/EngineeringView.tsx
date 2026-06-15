@@ -8,7 +8,177 @@ import { StaffCard } from "@/components/StaffCard";
 import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
 import { IS_DEMO } from "@/lib/demoFlag";
-import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket, Globe, Loader2, Download, ExternalLink, Copy, Check } from "lucide-react";
+import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket, Globe, Loader2, Download, ExternalLink, Copy, Check, FileText, Wrench, ListChecks, CheckCircle2 } from "lucide-react";
+
+type Phase = "idle" | "architect" | "build" | "review" | "done" | "error";
+
+/** Constructor de proyectos multi-agente: Arquitecto (PROJECT.md) → Implementador → QA. */
+function ProjectBuilder() {
+  const [prompt, setPrompt] = useState("");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [projectMd, setProjectMd] = useState<string | null>(null);
+  const [html, setHtml] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const running = phase === "architect" || phase === "build" || phase === "review";
+
+  async function step(body: any): Promise<any> {
+    const r = await fetch("/api/projects/step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    try {
+      return await r.json();
+    } catch {
+      return { ok: false, error: r.status === 504 ? "Una fase tardó demasiado (límite 60s). Reintenta." : "Respuesta inválida del servidor." };
+    }
+  }
+
+  function fail(j: any) {
+    setMsg(j?.noKey ? "⚠️ Falta ANTHROPIC_API_KEY en Vercel." : j?.budgetExceeded ? "⛔ Tope de gasto diario alcanzado." : `Error: ${j?.error ?? "desconocido"}`);
+    setPhase("error");
+  }
+
+  async function build() {
+    if (!prompt.trim()) return;
+    setMsg(null);
+    setProjectMd(null);
+    setHtml(null);
+    setNotes([]);
+
+    // 1) ARQUITECTO → PROJECT.md
+    setPhase("architect");
+    const a = await step({ phase: "architect", prompt });
+    if (!a.ok) return fail(a);
+    setProjectMd(a.projectMd);
+
+    // 2) IMPLEMENTADOR → código funcional
+    setPhase("build");
+    const b = await step({ phase: "build", prompt, projectMd: a.projectMd });
+    if (!b.ok) return fail(b);
+    setHtml(b.html);
+
+    // 3) QA → revisa y corrige
+    setPhase("review");
+    const r = await step({ phase: "review", projectMd: a.projectMd, code: b.html });
+    if (r.ok) {
+      setHtml(r.html);
+      setNotes(Array.isArray(r.notes) ? r.notes : []);
+    }
+    setPhase("done");
+    setMsg("✅ Proyecto construido y revisado. Vista previa abajo (tu localhost) · descarga los archivos.");
+  }
+
+  function downloadFile(content: string, filename: string, type: string) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function openTab() {
+    if (!html) return;
+    const w = window.open();
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+  }
+
+  const steps: { key: Phase; label: string; icon: any }[] = [
+    { key: "architect", label: "Arquitecto · PROJECT.md", icon: FileText },
+    { key: "build", label: "Implementador · código", icon: Wrench },
+    { key: "review", label: "QA · revisión", icon: ListChecks },
+  ];
+  const order: Phase[] = ["architect", "build", "review", "done"];
+  const curIdx = order.indexOf(phase);
+
+  return (
+    <div className="panel p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Code2 className="h-4 w-4 text-[#818CF8]" />
+        <p className="text-[13px] font-semibold text-text">Constructor de proyectos (multi-agente)</p>
+        <span className="ml-auto rounded-md bg-[#818CF815] px-2 py-0.5 text-[10px] font-semibold text-[#818CF8]">Arquitecto → Implementador → QA</span>
+      </div>
+
+      <textarea
+        data-testid="pb-prompt"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        rows={3}
+        placeholder="Describe el proyecto que quieres. Ej: 'Landing para un restaurante de comida llanera en Villavicencio, con menú, galería, reservas por WhatsApp y testimonios.'"
+        className="w-full resize-none rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-[#818CF8]/50"
+      />
+      <button
+        data-testid="btn-build-project"
+        onClick={build}
+        disabled={running || !prompt.trim()}
+        className="mt-2 flex items-center gap-2 rounded-lg border border-[#818CF8]/40 bg-[#818CF8]/15 px-3 py-2 text-[12px] font-semibold text-[#818CF8] transition-colors hover:bg-[#818CF8]/25 disabled:opacity-40"
+      >
+        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+        {running ? "Construyendo…" : "Construir proyecto"}
+      </button>
+
+      {/* Progreso de fases */}
+      {phase !== "idle" && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          {steps.map((s, i) => {
+            const done = curIdx > i;
+            const active = phase === s.key;
+            const Icon = s.icon;
+            return (
+              <div key={s.key} className="flex items-center gap-2 text-[11px]">
+                {done ? <CheckCircle2 className="h-3.5 w-3.5 text-ok" /> : active ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#818CF8]" /> : <Icon className="h-3.5 w-3.5 text-text-dim" />}
+                <span className={done ? "text-ok" : active ? "text-text" : "text-text-dim"}>{s.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {msg && <p data-testid="pb-msg" className="mt-2 text-[11px] text-text-muted">{msg}</p>}
+
+      {/* Resultados */}
+      {projectMd && (
+        <details className="mt-3 rounded-lg border border-border bg-surface/50" open={!html}>
+          <summary className="cursor-pointer px-3 py-2 text-[12px] font-semibold text-text">📄 PROJECT.md (arquitectura)</summary>
+          <pre className="max-h-[260px] overflow-auto whitespace-pre-wrap px-3 pb-3 text-[11px] leading-relaxed text-text-muted">{projectMd}</pre>
+          <div className="px-3 pb-3">
+            <button onClick={() => downloadFile(projectMd, "PROJECT.md", "text/markdown")} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+              <Download className="h-3.5 w-3.5" /> Descargar PROJECT.md
+            </button>
+          </div>
+        </details>
+      )}
+
+      {notes.length > 0 && (
+        <div className="mt-3 rounded-lg border border-ok/30 bg-ok/5 p-3">
+          <p className="mb-1.5 text-[11px] font-semibold text-ok">QA verificó:</p>
+          <ul className="space-y-1">
+            {notes.slice(0, 8).map((n, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[11px] text-text-muted"><Check className="mt-0.5 h-3 w-3 shrink-0 text-ok" />{n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {html && (
+        <div className="mt-3">
+          <div className="mb-2 flex flex-wrap gap-2">
+            <button onClick={() => downloadFile(html, "index.html", "text/html")} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+              <Download className="h-3.5 w-3.5" /> Descargar index.html
+            </button>
+            <button onClick={openTab} className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-text-muted hover:text-text">
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir (localhost)
+            </button>
+          </div>
+          <iframe data-testid="pb-preview" title="Vista previa del proyecto" srcDoc={html} className="h-[480px] w-full rounded-lg border border-border bg-white" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Generador de sitios web reales (proyecto entregable): crea un HTML autónomo del negocio. */
 function WebsiteForge() {
@@ -194,6 +364,7 @@ export function EngineeringView() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
         <div className="flex flex-col gap-4">
+          <ProjectBuilder />
           <WebsiteForge />
           <div>
             <p className="label-eyebrow mb-2 px-1">Agentes autónomos · pulsa “Ejecutar” para correr una tarea con subagentes</p>
