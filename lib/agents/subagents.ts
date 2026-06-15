@@ -53,6 +53,8 @@ export async function runWithSubagents<T = unknown>(opts: {
   schema: Record<string, unknown>;
   subagents?: SubagentSpec[];
   maxTokens?: number;
+  /** Si false, NO hace la 3ª llamada de síntesis (más rápido, cabe en 60s). Defecto true. */
+  synthesize?: boolean;
 }): Promise<WithSubagentsResult<T>> {
   // 1) Borrador (effort bajo para que la corrida completa quepa en el límite de 60s)
   const draftRes = await runRaw<T>({
@@ -87,6 +89,12 @@ export async function runWithSubagents<T = unknown>(opts: {
       return { ...spec, ...r.data } as SubagentReport;
     })
   );
+
+  // Modo rápido: devuelve el borrador completo + las críticas (sin 3ª llamada).
+  // Evita el timeout de 60s en tareas de contenido largo, conservando el detalle del borrador.
+  if (opts.synthesize === false) {
+    return { data: draft, draft, reports, improved: false };
+  }
 
   // 3) ¿Hace falta revisar? Si todos dicen "ship" sin sugerencias, el borrador ya es bueno.
   const needsRevision = reports.some(

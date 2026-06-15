@@ -80,10 +80,11 @@ export async function POST(req: Request) {
     }>({
       system: buildAreaAgentSystem(name, role, area),
       model,
-      input: `Tarea (de inicio a fin): ${task}\n\nEntrega CONCISA y accionable (sin relleno). Ve al grano con formato claro.`,
+      input: `Tarea (de inicio a fin): ${task}\n\nEntrega un resultado COMPLETO, bien estructurado y accionable, listo para usar (con el detalle necesario, sin relleno).`,
       schema: DELIVERABLE_SCHEMA as unknown as Record<string, unknown>,
       subagents,
-      maxTokens: 2800,
+      maxTokens: 4500,
+      synthesize: false,
     });
     return NextResponse.json({ ok: true, model, budget: getBudget(), ...result });
   } catch (err: any) {
