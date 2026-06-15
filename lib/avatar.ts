@@ -1,90 +1,133 @@
 /**
- * Motor de avatares pixel reutilizable (oficina + editor). Dibuja un personaje (vista
- * trasera, en su puesto) totalmente personalizable. Lo usan PixelOffice y el editor PRO.
+ * Motor de avatares pixel — VISTA FRONTAL con detalle (cara, ojos que parpadean, cejas,
+ * nariz, boca, gafas, barba, peinados, gorro y outfit). Reutilizado por la oficina y el
+ * editor PRO. Todo dibujado con fillRect (crisp pixel-art).
  */
 export interface Look {
   name?: string;
   skin?: string;
   hair?: string;
-  style?: string; // short | long | bald | mohawk | bun | spiky | afro | ponytail | undercut
-  shirt?: string; // null/undefined → usa el color base del agente
-  acc?: string;   // none | headset | glasses
-  hat?: string;   // none | cap | beanie
+  style?: string;   // short long bald mohawk bun spiky afro ponytail undercut
+  shirt?: string;   // color (vacío = color base del agente)
+  acc?: string;     // none | glasses
+  hat?: string;     // none | cap | beanie
   hatColor?: string;
-  outfit?: string; // shirt | hoodie | suit
+  outfit?: string;  // shirt | hoodie | suit
+  beard?: string;   // none | stubble | goatee | full
+  headset?: string; // "1" usa headset, "0" no
 }
 
 export const SKINS = ["#ffe0bd", "#f1c9a0", "#e8b98a", "#d49a6a", "#c68642", "#a86b3c", "#8d5524", "#5a3825"];
 export const HAIRS = ["#2b2017", "#4a3526", "#6b4b2a", "#141414", "#caa14a", "#e8d28a", "#7a3b1f", "#23233a", "#9aa0ac", "#d6d6de", "#b5552e", "#7c3aed", "#e0457b", "#2563eb", "#16a34a"];
 export const SHIRTS = ["#22D3EE", "#A78BFA", "#34D399", "#FB7185", "#FBBF24", "#E8C766", "#60A5FA", "#f472b6", "#94a3b8", "#e5e7eb", "#1f2937", "#fb923c", "#ef4444", "#10b981"];
 export const STYLES = ["short", "long", "bald", "mohawk", "bun", "spiky", "afro", "ponytail", "undercut"];
-export const ACCS = ["headset", "glasses", "none"];
+export const ACCS = ["none", "glasses"];
 export const HATS = ["none", "cap", "beanie"];
 export const OUTFITS = ["shirt", "hoodie", "suit"];
+export const BEARDS = ["none", "stubble", "goatee", "full"];
 
 export function hashId(s: string): number { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 
-/** Rellena los valores faltantes con un look determinista según el id. */
-export function resolveLook(id: string, p: Look = {}): Required<Omit<Look, "name" | "shirt" | "hatColor">> & { shirt?: string; hatColor?: string } {
+function shade(hex: string, f: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.max(0, Math.min(255, Math.round(r * f))); g = Math.max(0, Math.min(255, Math.round(g * f))); b = Math.max(0, Math.min(255, Math.round(b * f)));
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+export function resolveLook(id: string, p: Look = {}) {
   const h = hashId(id || "x");
   return {
     skin: p.skin || SKINS[h % SKINS.length],
     hair: p.hair || HAIRS[(h >> 3) % HAIRS.length],
-    style: p.style || STYLES[(h >> 6) % 3], // short/long/bald por defecto
-    shirt: p.shirt,
-    acc: p.acc || ((h % 4) === 0 ? "glasses" : "headset"),
+    style: p.style || STYLES[(h >> 6) % 4],
+    shirt: p.shirt as string | undefined,
+    acc: p.acc || ((h % 5) === 0 ? "glasses" : "none"),
     hat: p.hat || "none",
-    hatColor: p.hatColor,
+    hatColor: p.hatColor as string | undefined,
     outfit: p.outfit || "shirt",
+    beard: p.beard || ((h % 6) === 0 ? "full" : (h % 6) === 1 ? "goatee" : "none"),
+    headset: p.headset ?? "1",
   };
 }
 
-/**
- * Dibuja el avatar (vista trasera). cx = centro X, py = Y superior de la cabeza.
- * Píxeles con fillRect (crisp). `frame` para micro-animación de balanceo.
- */
 export function drawAvatar(
   g: CanvasRenderingContext2D,
   cx: number,
   py: number,
   look: ReturnType<typeof resolveLook>,
   baseColor: string,
-  scale = 1
+  scale = 1,
+  frame = 0
 ) {
   const R = (x: number, y: number, w: number, h: number, c: string) => { g.fillStyle = c; g.fillRect(Math.round(cx + x * scale), Math.round(py + y * scale), Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))); };
-  const shirt = look.shirt || baseColor;
-  const outfit = look.outfit || "shirt";
-  const hatCol = look.hatColor || baseColor;
+  const skin = look.skin, skinD = shade(skin, 0.82), hair = look.hair, hairD = shade(hair, 0.7);
+  const shirt = look.shirt || baseColor, outfit = look.outfit, hatCol = look.hatColor || baseColor;
+  const blink = frame > 0 && (frame % 230 < 8);
 
-  // hombros / outfit
-  if (outfit === "hoodie") { R(-15, 10, 30, 6, shirt); R(-7, 9, 14, 4, look.skin); } // capucha caída
-  R(-14, 17, 28, 16, shirt);
-  R(-14, 17, 28, 2, "rgba(255,255,255,0.12)");
-  if (outfit === "suit") { R(-14, 17, 28, 16, "#222a3b"); R(-3, 17, 6, 16, "#e9edf6"); R(-1, 17, 2, 9, "#c0392b"); R(-14, 17, 5, 16, "#2c3550"); R(9, 17, 5, 16, "#2c3550"); }
-  // nuca (piel)
-  R(-11, 13, 22, 6, look.skin);
+  // ── Torso / outfit ──
+  if (outfit === "hoodie") { R(-15, 19, 30, 6, shirt); R(-5, 20, 10, 3, skinD); } // capucha
+  R(-13, 23, 26, 14, shirt);                    // torso
+  R(-13, 23, 26, 2, shade(shirt, 1.18));        // luz hombro
+  if (outfit === "suit") {
+    R(-13, 23, 26, 14, "#222a3b");
+    R(-13, 23, 6, 14, "#2c3550"); R(7, 23, 6, 14, "#2c3550"); // solapas
+    R(-3, 23, 6, 14, "#eef1f8");                 // camisa
+    R(-1, 23, 2, 8, look.shirt || "#c0392b");    // corbata
+  }
+  if (outfit === "hoodie") { R(-2, 25, 1, 7, shade(shirt, 0.6)); R(1, 25, 1, 7, shade(shirt, 0.6)); } // cordones
 
-  // pelo por estilo (vista trasera)
+  // ── Cuello ──
+  R(-4, 19, 8, 4, skinD);
+
+  // ── Cabeza ──
+  R(-9, 2, 18, 17, skin);
+  R(-9, 2, 18, 2, shade(skin, 1.08));           // frente con luz
+  R(-10, 9, 2, 4, skin); R(8, 9, 2, 4, skin);   // orejas
+
+  // ── Pelo (frontal) ──
   if (look.style !== "bald") {
-    if (look.style === "undercut") { R(-11, 2, 22, 7, look.hair); R(-11, 9, 22, 5, look.skin); }
-    else R(-11, 2, 22, 13, look.hair);
-    if (look.style === "long") { R(-13, 6, 4, 18, look.hair); R(9, 6, 4, 18, look.hair); }
-    if (look.style === "mohawk") { R(-2, -3, 4, 6, look.hair); }
-    if (look.style === "bun") { R(-3, -4, 6, 6, look.hair); }
-    if (look.style === "ponytail") { R(8, 4, 4, 16, look.hair); R(10, 18, 3, 6, look.hair); }
-    if (look.style === "afro") { R(-13, -3, 26, 18, look.hair); R(-11, 13, 22, 4, look.skin); }
-    if (look.style === "spiky") { R(-9, -2, 3, 4, look.hair); R(-3, -3, 3, 5, look.hair); R(3, -2, 3, 4, look.hair); R(7, -2, 2, 3, look.hair); }
-  } else {
-    R(-11, 4, 22, 11, look.skin); // calvo
-    R(-11, 11, 22, 4, look.hair); // pelo lateral bajo
+    // flequillo/top
+    if (look.style === "undercut") { R(-9, 0, 18, 4, hair); R(-9, 4, 2, 4, hair); R(7, 4, 2, 4, hair); }
+    else { R(-10, -1, 20, 6, hair); R(-10, 0, 3, 9, hair); R(7, 0, 3, 9, hair); }
+    if (look.style === "short") { R(-8, 4, 16, 2, hair); }
+    if (look.style === "long") { R(-12, 0, 3, 22, hair); R(9, 0, 3, 22, hair); }
+    if (look.style === "afro") { R(-12, -5, 24, 9, hair); R(-12, -2, 3, 12, hair); R(9, -2, 3, 12, hair); }
+    if (look.style === "mohawk") { R(-2, -5, 4, 8, hair); R(-9, 2, 4, 3, skinD); R(5, 2, 4, 3, skinD); }
+    if (look.style === "spiky") { R(-9, -3, 3, 4, hair); R(-4, -5, 3, 6, hair); R(1, -4, 3, 5, hair); R(6, -3, 3, 4, hair); }
+    if (look.style === "bun") { R(-3, -5, 6, 5, hair); }
+    if (look.style === "ponytail") { R(9, 2, 3, 14, hair); }
+    R(-10, -1, 20, 2, hairD);                    // sombra superior del pelo
   }
 
-  // gorro (con color propio)
-  if (look.hat === "cap") { R(-12, 0, 24, 6, hatCol); R(-12, 6, 9, 2, "#1b2430"); }
-  if (look.hat === "beanie") { R(-12, -2, 24, 9, hatCol); R(-12, 5, 24, 2, "rgba(0,0,0,0.25)"); }
+  // ── Cara ──
+  R(-6, 7, 3, 1, hairD); R(3, 7, 3, 1, hairD);   // cejas
+  if (blink) { R(-6, 10, 3, 1, skinD); R(3, 10, 3, 1, skinD); }
+  else {
+    R(-6, 9, 3, 3, "#ffffff"); R(3, 9, 3, 3, "#ffffff"); // ojos
+    R(-5, 10, 2, 2, "#26344d"); R(4, 10, 2, 2, "#26344d"); // pupilas
+  }
+  R(-1, 12, 2, 2, skinD);                         // nariz
+  R(-3, 15, 6, 1, shade(skin, 0.6));              // boca
 
-  // accesorio
-  if (look.acc === "headset" && look.hat === "none") { R(-13, 5, 4, 11, "#15202f"); R(9, 5, 4, 11, "#15202f"); R(-12, 0, 24, 4, "#15202f"); }
-  else if (look.acc === "headset") { R(-13, 6, 4, 10, "#15202f"); R(9, 6, 4, 10, "#15202f"); }
-  if (look.acc === "glasses") { R(-10, 11, 8, 1, "#cfe0ff"); R(2, 11, 8, 1, "#cfe0ff"); }
+  // ── Barba ──
+  if (look.beard === "full") { R(-9, 13, 18, 6, hair); R(-9, 11, 2, 6, hair); R(7, 11, 2, 6, hair); R(-3, 15, 6, 1, shade(skin, 0.6)); }
+  else if (look.beard === "goatee") { R(-3, 16, 6, 3, hair); }
+  else if (look.beard === "stubble") { R(-7, 16, 14, 2, shade(hair, 0.5)); }
+
+  // ── Gafas ──
+  if (look.acc === "glasses") {
+    R(-7, 9, 5, 4, "#11203a"); R(-6, 10, 3, 2, "#9fd0ff");
+    R(2, 9, 5, 4, "#11203a"); R(3, 10, 3, 2, "#9fd0ff");
+    R(-2, 10, 4, 1, "#11203a");
+  }
+
+  // ── Headset ──
+  if (look.headset !== "0" && look.hat === "none") {
+    R(-11, -1, 22, 3, "#15202f"); R(-12, 7, 4, 8, "#1b2a3d"); R(8, 7, 4, 8, "#1b2a3d");
+  } else if (look.headset !== "0") { R(-12, 7, 4, 8, "#1b2a3d"); R(8, 7, 4, 8, "#1b2a3d"); }
+
+  // ── Gorro ──
+  if (look.hat === "cap") { R(-10, -2, 20, 6, hatCol); R(-12, 3, 14, 2, shade(hatCol, 0.7)); }
+  if (look.hat === "beanie") { R(-11, -4, 22, 9, hatCol); R(-11, 3, 22, 2, shade(hatCol, 0.6)); }
 }

@@ -143,43 +143,34 @@ export function PixelOffice() {
 
     function character(cx: number, py: number, w: Worker, idx: number) {
       const bob = reduce ? 0 : Math.round(Math.sin(frame / 22 + idx) * 1.3);
-      drawAvatar(c2d, cx, py + bob, resolveLook(w.id, looksRef.current[w.id]), w.color, 1);
+      drawAvatar(c2d, cx, py + bob, resolveLook(w.id, looksRef.current[w.id]), w.color, 1, frame + idx * 37);
       return { bob };
     }
 
     function deskUnit(cx: number, topY: number, w: Worker, idx: number) {
-      const deskY = topY + 46, deskW = 70, deskX = cx - deskW / 2;
-      R(cx - 11, deskY - 6, 22, 9, "#22262f");          // silla
-      character(cx, topY + 12, w, idx);
-      // monitor
-      const mY = deskY - 28;
-      R(cx - 21, mY, 42, 27, "#0a0d15");
-      R(cx - 18, mY + 3, 36, 21, w.working ? "#0e1726" : "#111521");
+      // Personaje frontal con la cara por ENCIMA del monitor.
+      character(cx, topY + 14, w, idx);
+      const deskY = topY + 60, deskW = 72, deskX = cx - deskW / 2;
+      // monitor (cubre el torso; la cara queda arriba)
+      const mY = topY + 38;
+      R(cx - 22, mY, 44, 22, "#0a0d15");
+      R(cx - 19, mY + 3, 38, 16, w.working ? "#0e1726" : "#111521");
       if (w.working) {
         const pal = ["#5ad1ff", "#a78bfa", "#34d399", "#fbbf24"];
-        for (let i = 0; i < 3; i++) { const len = 6 + ((frame / 6 + i * 8 + idx * 4) % 24); R(cx - 15, mY + 6 + i * 6, len, 2, pal[(i + idx) % 4]); }
-        if (((frame >> 4) & 1) === 0) R(cx + 6, mY + 6 + ((frame / 30 | 0) % 3) * 6, 2, 2, "#fff");
+        for (let i = 0; i < 3; i++) { const len = 6 + ((frame / 6 + i * 8 + idx * 4) % 26); R(cx - 16, mY + 5 + i * 4, len, 2, pal[(i + idx) % 4]); }
+        if (((frame >> 4) & 1) === 0) R(cx + 8, mY + 5 + ((frame / 30 | 0) % 3) * 4, 2, 2, "#fff");
       }
-      R(cx - 5, mY + 27, 10, 4, "#0a0d15");
+      R(cx - 5, mY + 22, 10, 3, "#0a0d15"); // pie monitor
+      // escritorio
       R(deskX, deskY, deskW, 7, "#6b4b2a"); R(deskX, deskY + 7, 3, 12, "#553c22"); R(deskX + deskW - 3, deskY + 7, 3, 12, "#553c22");
-      R(deskX + 6, deskY - 4, 14, 3, "#15202f");        // teclado
-      if (w.working && !reduce) { const up = (frame >> 3) & 1; R(cx - 9, deskY - 5 - up, 4, 4, "#f0c089"); R(cx + 5, deskY - 5 - (up ^ 1), 4, 4, "#f0c089"); }
+      R(deskX + 8, deskY - 4, 16, 3, "#15202f"); // teclado
       R(deskX + deskW - 12, deskY - 5, 5, 6, "#cfe8ff"); // taza
       // nombre + estado
       c2d.fillStyle = "#eaf0ff"; c2d.font = "600 10px ui-sans-serif, system-ui"; c2d.textAlign = "center";
-      c2d.fillText(w.name, cx, topY + 8);
-      c2d.fillStyle = w.working ? "#34D399" : "#5A678C"; c2d.beginPath(); c2d.arc(cx + c2d.measureText(w.name).width / 2 + 6, topY + 4, 2.5, 0, Math.PI * 2); c2d.fill();
-      if (w.working) bubble(cx, mY - 6, w.task);
+      c2d.fillText(w.name, cx, topY + 9);
+      c2d.fillStyle = w.working ? "#34D399" : "#5A678C"; c2d.beginPath(); c2d.arc(cx + c2d.measureText(w.name).width / 2 + 6, topY + 5, 2.5, 0, Math.PI * 2); c2d.fill();
     }
 
-    function bubble(cx: number, by: number, text: string) {
-      const t = (text || "").slice(0, 24);
-      c2d.font = "500 8px ui-monospace, monospace";
-      const tw = Math.min(140, c2d.measureText(t).width + 12);
-      c2d.fillStyle = "rgba(10,15,26,0.92)"; rr(cx - tw / 2, by - 15, tw, 15, 4); c2d.fill();
-      c2d.strokeStyle = "rgba(90,103,140,0.45)"; c2d.lineWidth = 1; c2d.stroke();
-      c2d.fillStyle = "#cfe0ff"; c2d.textAlign = "center"; c2d.fillText(t, cx, by - 5);
-    }
     const rr = (x: number, y: number, w: number, h: number, r: number) => { c2d.beginPath(); c2d.moveTo(x + r, y); c2d.arcTo(x + w, y, x + w, y + h, r); c2d.arcTo(x + w, y + h, x, y + h, r); c2d.arcTo(x, y + h, x, y, r); c2d.arcTo(x, y, x + w, y, r); c2d.closePath(); };
 
     function decor(kind: string, rx: number, ry: number, rw: number, rh: number, color: string) {
@@ -225,21 +216,19 @@ export function PixelOffice() {
     function daptuxPerson(cx: number, topY: number, p: Daptux, idx: number, vip: boolean) {
       const working = !!p.startedAt;
       // zona VIP (alfombra dorada bajo el CEO)
-      if (vip) { c2d.fillStyle = "rgba(232,199,102,0.10)"; rr(cx - 46, topY + 4, 92, 88, 8); c2d.fill(); c2d.strokeStyle = "rgba(232,199,102,0.45)"; c2d.lineWidth = 1; c2d.stroke(); }
-      const deskY = topY + 52, deskW = 60, deskX = cx - deskW / 2;
-      R(cx - 10, deskY - 6, 20, 9, "#22262f"); // silla
-      character(cx, topY + 16, { id: p.id, name: p.name, color: p.color, task: p.task, working }, idx);
-      // monitor
-      const mY = deskY - 26; R(cx - 19, mY, 38, 24, "#0a0d15"); R(cx - 16, mY + 3, 32, 18, working ? "#0e1726" : "#111521");
-      if (working) { const pal = ["#5ad1ff", "#a78bfa", "#34d399", "#fbbf24"]; for (let i = 0; i < 3; i++) { const len = 6 + ((frame / 6 + i * 7 + idx * 4) % 18); R(cx - 13, mY + 5 + i * 5, len, 2, pal[(i + idx) % 4]); } }
-      R(cx - 4, mY + 24, 8, 4, "#0a0d15");
+      if (vip) { c2d.fillStyle = "rgba(232,199,102,0.10)"; rr(cx - 48, topY + 6, 96, 96, 8); c2d.fill(); c2d.strokeStyle = "rgba(232,199,102,0.45)"; c2d.lineWidth = 1; c2d.stroke(); }
+      const deskY = topY + 62, deskW = 62, deskX = cx - deskW / 2;
+      // personaje frontal con la cara por encima del monitor
+      character(cx, topY + 18, { id: p.id, name: p.name, color: p.color, task: p.task, working }, idx);
+      const mY = topY + 42; R(cx - 20, mY, 40, 20, "#0a0d15"); R(cx - 17, mY + 3, 34, 14, working ? "#0e1726" : "#111521");
+      if (working) { const pal = ["#5ad1ff", "#a78bfa", "#34d399", "#fbbf24"]; for (let i = 0; i < 3; i++) { const len = 6 + ((frame / 6 + i * 7 + idx * 4) % 22); R(cx - 14, mY + 5 + i * 4, len, 2, pal[(i + idx) % 4]); } }
       // escritorio propio (dorado si VIP)
       R(deskX, deskY, deskW, 7, vip ? "#7a5a2a" : "#6b4b2a"); if (vip) R(deskX, deskY, deskW, 2, "#E8C766");
-      R(deskX, deskY + 7, 3, 12, "#553c22"); R(deskX + deskW - 3, deskY + 7, 3, 12, "#553c22");
-      if (working && !reduce) { const up = (frame >> 3) & 1; R(cx - 8, deskY - 5 - up, 4, 4, "#f0c089"); R(cx + 4, deskY - 5 - (up ^ 1), 4, 4, "#f0c089"); }
+      R(deskX, deskY + 7, 3, 11, "#553c22"); R(deskX + deskW - 3, deskY + 7, 3, 11, "#553c22");
+      R(deskX + 8, deskY - 4, 16, 3, "#15202f"); // teclado
       // nombre (con estrella VIP) + rol
-      c2d.fillStyle = "#eaf0ff"; c2d.font = "700 11px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText((vip ? "★ " : "") + p.name, cx, topY + 66);
-      c2d.fillStyle = p.color; c2d.font = "600 7.5px ui-sans-serif"; c2d.fillText(p.role.toUpperCase(), cx, topY + 76);
+      c2d.fillStyle = "#eaf0ff"; c2d.font = "700 11px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText((vip ? "★ " : "") + p.name, cx, topY + 76);
+      c2d.fillStyle = p.color; c2d.font = "600 7.5px ui-sans-serif"; c2d.fillText(p.role.toUpperCase(), cx, topY + 86);
       // burbuja: qué hace + hace cuánto (en vivo)
       const txt = working ? `${(p.task || "Trabajando").slice(0, 22)} · hace ${ago(p.startedAt)}` : "disponible";
       c2d.font = "500 8px ui-monospace, monospace";
