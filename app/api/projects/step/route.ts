@@ -21,7 +21,7 @@ PROJECT.md claro y accionable en Markdown. Incluye: # Título, Objetivo, Usuario
 (para web: HTML+CSS+JS en UN archivo autónomo, sin dependencias externas salvo imágenes),
 Páginas/Secciones, Componentes, Datos/Estado, y "## Criterios de aceptación" como lista
 verificable (checkboxes "- [ ]"). Conciso pero completo y realista. Español de Colombia.
-Para una landing, alcance ENFOCADO: 4-5 secciones potentes (no más).
+Para una landing, alcance ENFOCADO: máximo 4 secciones potentes (no más).
 IMPORTANTE: escribe el PROJECT.md COMPLETO de principio a fin; NO lo cortes a media frase.
 Además, en "imageQueries" devuelve 4-6 términos de búsqueda EN INGLÉS para fotos de stock
 relevantes al proyecto (ej. "llanero restaurant grilled meat", "cozy cafe interior",
@@ -50,9 +50,10 @@ ESTÁNDARES OBLIGATORIOS DE NIVEL SENIOR:
 - Accesibilidad: HTML semántico (<header><main><section><footer>), contraste AA, alt en imágenes, aria donde aplique.
 - JS vanilla, mínimo y SIN errores de consola. Sin frameworks. Única dependencia externa permitida: Google Fonts + Unsplash.
 
-EFICIENCIA (CRÍTICO, hay límite de tiempo): código MUY COMPACTO. CSS conciso sin repetir, sin comentarios.
-Logra el impacto con imágenes reales, gradientes y tipografía — NO con miles de líneas. Máximo 4-5 secciones.
-Apunta a un archivo de ~12-17 KB. Si dudas, MENOS secciones pero impecables. Prioriza terminar COMPLETO.
+EFICIENCIA (CRÍTICO, hay límite estricto de tiempo de 60s): código MUY COMPACTO. CSS conciso sin repetir,
+sin comentarios. Logra el impacto con las imágenes reales, gradientes y tipografía — NO con miles de líneas.
+MÁXIMO 4 secciones. Apunta a un archivo de ~10-14 KB. Si dudas, MENOS secciones pero impecables.
+Es OBLIGATORIO terminar el HTML COMPLETO dentro del límite: prioriza completar sobre añadir.
 
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
@@ -111,10 +112,11 @@ export async function POST(req: Request) {
   }
 
   // Imágenes REALES para el build (URLs que sí cargan, relevantes al rubro).
+  // Límite de fotos para mantener la página ágil y caber en los 60s del plan Hobby.
   let imagesBlock = "";
   if (phase === "build") {
-    const queries = imageQueries.length ? imageQueries : prompt ? [prompt] : [];
-    const imgs = queries.length ? await searchImagesMulti(queries, 2) : [];
+    const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 4);
+    const imgs = queries.length ? await searchImagesMulti(queries, 1) : [];
     imagesBlock = imgs.length
       ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales) ---\n` +
         imgs.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
