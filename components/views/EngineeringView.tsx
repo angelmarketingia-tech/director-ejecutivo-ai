@@ -7,6 +7,7 @@ import { DeptStation } from "@/components/deck/DeptStation";
 import { StaffCard } from "@/components/StaffCard";
 import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
+import { TeamDashboard } from "@/components/TeamDashboard";
 import { IS_DEMO } from "@/lib/demoFlag";
 import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket, Globe, Loader2, Download, ExternalLink, Copy, Check, FileText, Wrench, ListChecks, CheckCircle2 } from "lucide-react";
 
@@ -352,6 +353,9 @@ export function EngineeringView() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Dashboard del equipo REAL (Juan y David) */}
+      <TeamDashboard />
+
       <div className="panel flex flex-wrap items-stretch divide-x divide-border overflow-hidden">
         <Metric icon={Code2} label="Agentes" value={String(agents.length)} tint="#818CF8" />
         <Metric icon={GitBranch} label="Subagentes" value={String(subCount)} tint="#E879F9" />
