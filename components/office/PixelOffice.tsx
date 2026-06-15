@@ -26,12 +26,13 @@ export function PixelOffice() {
   const [team, setTeam] = useState<any[]>([]);
   const [looks, setLooks] = useState<Record<string, Look>>({});
   const [role, setRole] = useState("member");
+  const [meId, setMeId] = useState("");
   const looksRef = useRef<Record<string, Look>>({});
   useEffect(() => { looksRef.current = looks; }, [looks]);
   useEffect(() => {
     const loadTeam = () => fetch("/api/team").then((r) => r.json()).then((j) => { if (j.ok) setTeam(j.team); }).catch(() => {});
     loadTeam();
-    fetch("/api/appearance").then((r) => r.json()).then((j) => { if (j.ok) { setLooks(j.looks || {}); setRole(j.role); } }).catch(() => {});
+    fetch("/api/appearance").then((r) => r.json()).then((j) => { if (j.ok) { setLooks(j.looks || {}); setRole(j.role); setMeId(j.me || ""); } }).catch(() => {});
     const id = setInterval(loadTeam, 15000);
     return () => clearInterval(id);
   }, []);
@@ -320,11 +321,9 @@ export function PixelOffice() {
       <div className="mb-1.5 flex items-center gap-2 px-1">
         <span className="h-2 w-2 animate-pulse rounded-full bg-ok" />
         <p className="text-[13px] font-semibold text-text">Oficina en vivo · penthouse</p>
-        {role === "admin" && (
-          <button onClick={() => setEditing(true)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-prospect/30 bg-prospect/10 px-2.5 py-1 text-[11px] font-semibold text-prospect hover:bg-prospect/20">
-            <Sparkles className="h-3.5 w-3.5" /> Personalizar (PRO)
-          </button>
-        )}
+        <button onClick={() => setEditing(true)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-prospect/30 bg-prospect/10 px-2.5 py-1 text-[11px] font-semibold text-prospect hover:bg-prospect/20">
+          <Sparkles className="h-3.5 w-3.5" /> Personalizar (PRO)
+        </button>
       </div>
 
       <div className="overflow-hidden rounded-xl">
@@ -335,6 +334,8 @@ export function PixelOffice() {
         <CharacterEditor
           characters={editList}
           looks={looks}
+          me={meId}
+          role={role}
           onClose={() => setEditing(false)}
           onChange={(id, look) => setLooks((p) => ({ ...p, [id]: { ...p[id], ...look } }))}
         />
