@@ -1,10 +1,12 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { useDeck } from "@/lib/store";
 import { DemoClock } from "@/components/DemoClock";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { Topbar } from "@/components/Topbar";
+import { CursorGlow } from "@/components/fx/CursorGlow";
 import { LeadDrawer } from "@/components/LeadDrawer";
 import { DeckView } from "@/components/views/DeckView";
 import { LeadsView } from "@/components/views/LeadsView";
@@ -30,30 +32,41 @@ export default function Page() {
       <div className="pointer-events-none fixed inset-0 bg-radial-deck" />
 
       <DemoClock />
+      <CursorGlow />
       <Sidebar />
       <MobileNav />
 
       <div className="relative flex min-w-0 flex-1 flex-col">
         <Topbar />
         <main className="flex-1 overflow-x-hidden p-4 sm:p-5">
-          {area === "hq" && <HQView />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${area}/${view}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              {area === "hq" && <HQView />}
 
-          {area === "comercial" && (
-            <>
-              {view === "deck" && <DeckView />}
-              {view === "pipeline" && <PipelineBoard />}
-              {view === "leads" && <LeadsView />}
-              {view === "calls" && <CallsView />}
-              {view === "whatsapp" && <WhatsAppView />}
-              {view === "emails" && <EmailsView />}
-              {view === "settings" && <SettingsView />}
-            </>
-          )}
+              {area === "comercial" && (
+                <>
+                  {view === "deck" && <DeckView />}
+                  {view === "pipeline" && <PipelineBoard />}
+                  {view === "leads" && <LeadsView />}
+                  {view === "calls" && <CallsView />}
+                  {view === "whatsapp" && <WhatsAppView />}
+                  {view === "emails" && <EmailsView />}
+                  {view === "settings" && <SettingsView />}
+                </>
+              )}
 
-          {area === "marketing" && <MarketingView />}
-          {area === "ingenieria" && <EngineeringView />}
-          {area === "directiva" && <BoardView />}
-          {area === "rrhh" && <HRView />}
+              {area === "marketing" && <MarketingView />}
+              {area === "ingenieria" && <EngineeringView />}
+              {area === "directiva" && <BoardView />}
+              {area === "rrhh" && <HRView />}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

@@ -112,6 +112,25 @@ body {
   pointer-events: none;
 }
 
+/* Micro-interacción: los botones se iluminan suavemente al pasar el cursor */
+button:not(:disabled) {
+  transition: filter 0.15s ease, transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+@media (pointer: fine) {
+  button:not(:disabled):hover {
+    filter: brightness(1.12);
+  }
+  button:not(:disabled):active {
+    transform: translateY(1px);
+  }
+}
+
+/* Accesibilidad: sin animaciones si el usuario las reduce */
+@media (prefers-reduced-motion: reduce) {
+  .aurora { animation: none; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; }
+}
+
 .noise {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }

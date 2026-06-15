@@ -4,6 +4,7 @@ import { useDeck } from "@/lib/store";
 import { cn, fmtMoney } from "@/lib/utils";
 import { AREA_BY_ID } from "@/lib/departments";
 import { IS_DEMO } from "@/lib/demoFlag";
+import { SoundToggle } from "@/components/fx/SoundToggle";
 import { Play, Pause, RotateCcw, Gauge, Sparkles, Menu } from "lucide-react";
 
 const SPEEDS = [1, 2, 4];
@@ -96,6 +97,8 @@ export function Topbar() {
           {running ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           {running ? "En vivo" : "Pausado"}
         </button>
+
+        <SoundToggle />
 
         <button
           onClick={reset}

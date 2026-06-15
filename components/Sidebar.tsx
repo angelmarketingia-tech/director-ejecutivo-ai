@@ -3,6 +3,7 @@
 import { useDeck } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { AREAS } from "@/lib/departments";
+import { playSound } from "@/lib/sound";
 import type { Area } from "@/lib/types";
 import {
   Hexagon,
@@ -72,6 +73,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <button
                 data-testid={`area-${a.id}`}
                 onClick={() => {
+                  playSound("tick");
                   setArea(a.id as Area);
                   onNavigate?.();
                 }}

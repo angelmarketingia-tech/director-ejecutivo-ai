@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { NeuralBackground } from "@/components/fx/NeuralBackground";
 import { useDeck } from "@/lib/store";
 import { AREAS } from "@/lib/departments";
 import type { Area } from "@/lib/types";
@@ -45,6 +46,7 @@ export function HQView() {
     <div className="flex flex-col gap-4">
       {/* Banner */}
       <div className="panel relative overflow-hidden p-5">
+        <NeuralBackground />
         <div className="pointer-events-none absolute inset-0 bg-radial-deck opacity-80" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
