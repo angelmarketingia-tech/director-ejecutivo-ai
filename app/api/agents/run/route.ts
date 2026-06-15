@@ -12,8 +12,7 @@ import { rateLimit, readJsonLimited, authorized } from "@/lib/security";
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
-// 60s = plan Hobby de Vercel. En Pro súbelo a 300 para corridas largas de Fable 5.
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro
 
 const AGENTS = ["prospect", "research", "scoring", "email", "voice", "director"] as const;
 type Body = {

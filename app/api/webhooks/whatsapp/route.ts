@@ -7,7 +7,7 @@ import { getBudget } from "@/lib/agents/budget";
 import { logSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // GET — handshake de verificación de Meta.
 export async function GET(req: Request) {

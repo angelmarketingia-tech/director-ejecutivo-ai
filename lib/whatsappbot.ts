@@ -22,10 +22,10 @@ export async function generateReply(
     : "";
   const res = await runRaw<{ reply: string }>({
     system: buildBotSystem(kb),
-    model: "claude-haiku-4-5",
+    model: "claude-sonnet-4-6", // Vercel Pro: respuestas más naturales y persuasivas
     input: `${history}Mensaje del cliente: ${userMessage}\n\nResponde como ${kb.businessName} por WhatsApp (breve y útil).`,
     schema: REPLY_SCHEMA as unknown as Record<string, unknown>,
-    maxTokens: 800,
+    maxTokens: 900,
   });
   return res.data.reply;
 }

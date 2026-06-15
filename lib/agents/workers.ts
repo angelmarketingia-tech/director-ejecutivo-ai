@@ -152,10 +152,9 @@ export async function writeEmail(input: {
     agent: "email",
     input: prompt,
     schema: EMAIL_SCHEMA,
-    // Email no requiere razonamiento profundo: effort bajo evita que se agoten los
-    // tokens antes de terminar el cuerpo (causaba mensajes cortados).
-    effort: "low",
-    maxTokens: 2500,
+    // Vercel Pro: más esfuerzo y tokens → mensajes más persuasivos y completos.
+    effort: "medium",
+    maxTokens: 3500,
   });
 }
 

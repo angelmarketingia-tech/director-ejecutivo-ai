@@ -56,13 +56,13 @@ export async function runWithSubagents<T = unknown>(opts: {
   /** Si false, NO hace la 3ª llamada de síntesis (más rápido, cabe en 60s). Defecto true. */
   synthesize?: boolean;
 }): Promise<WithSubagentsResult<T>> {
-  // 1) Borrador (effort bajo para que la corrida completa quepa en el límite de 60s)
+  // 1) Borrador
   const draftRes = await runRaw<T>({
     system: opts.system,
     model: opts.model,
     input: opts.input,
     schema: opts.schema,
-    effort: "low",
+    effort: "medium",
     maxTokens: opts.maxTokens,
   });
   const draft = draftRes.data;
@@ -112,9 +112,9 @@ export async function runWithSubagents<T = unknown>(opts: {
       `${opts.input}\n\n--- Borrador previo ---\n${draftStr}\n\n` +
       `--- Críticas de subagentes (intégralas para mejorar la calidad) ---\n` +
       JSON.stringify(reports, null, 2) +
-      `\n\nDevuelve la versión final mejorada que resuelve los problemas señalados. Sé conciso y accionable.`,
+      `\n\nDevuelve la versión final mejorada que resuelve los problemas señalados.`,
     schema: opts.schema,
-    effort: "low",
+    effort: "high",
     maxTokens: opts.maxTokens,
   });
 

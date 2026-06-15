@@ -7,7 +7,7 @@ import { rateLimit, readJsonLimited, authorized, recipientAllowed } from "@/lib/
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro
 
 const SERVICE = "una página web profesional para conseguir más clientes";
 

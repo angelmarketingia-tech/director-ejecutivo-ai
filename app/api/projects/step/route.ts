@@ -6,7 +6,7 @@ import { searchImagesMulti, imagesEnabled } from "@/lib/integrations/images";
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro
 
 /**
  * POST /api/projects/step — una FASE del constructor de proyectos multi-agente.
@@ -22,7 +22,7 @@ PROJECT.md claro y accionable en Markdown. Incluye: # Título, Objetivo, Usuario
 (para web: HTML+CSS+JS en UN archivo autónomo, sin dependencias externas salvo imágenes),
 Páginas/Secciones, Componentes, Datos/Estado, y "## Criterios de aceptación" como lista
 verificable (checkboxes "- [ ]"). Conciso pero completo y realista. Español de Colombia.
-Para una landing, alcance ENFOCADO: máximo 4 secciones potentes (no más).
+Para una landing, propón 5-7 secciones potentes (hero, servicios, prueba social, galería, precios/proceso, CTA, footer).
 IMPORTANTE: escribe el PROJECT.md COMPLETO de principio a fin; NO lo cortes a media frase.
 Además, en "imageQueries" devuelve 4-6 términos de búsqueda EN INGLÉS para fotos de stock
 relevantes al proyecto (ej. "llanero restaurant grilled meat", "cozy cafe interior",
@@ -51,10 +51,9 @@ ESTÁNDARES OBLIGATORIOS DE NIVEL SENIOR:
 - Accesibilidad: HTML semántico (<header><main><section><footer>), contraste AA, alt en imágenes, aria donde aplique.
 - JS vanilla, mínimo y SIN errores de consola. Sin frameworks. Única dependencia externa permitida: Google Fonts + Unsplash.
 
-EFICIENCIA (CRÍTICO, hay límite estricto de tiempo de 60s): código MUY COMPACTO. CSS conciso sin repetir,
-sin comentarios. Logra el impacto con las imágenes reales, gradientes y tipografía — NO con miles de líneas.
-MÁXIMO 4 secciones. Apunta a un archivo de ~10-14 KB. Si dudas, MENOS secciones pero impecables.
-Es OBLIGATORIO terminar el HTML COMPLETO dentro del límite: prioriza completar sobre añadir.
+CALIDAD MÁXIMA: 5-7 secciones potentes y bien diseñadas (hero, características/servicios, prueba social/
+testimonios, galería con las imágenes reales, precios o proceso, CTA final, footer completo). CSS limpio y
+organizado. Usa TODAS las imágenes provistas. Es OBLIGATORIO entregar el HTML COMPLETO de principio a fin.
 
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
@@ -116,16 +115,15 @@ export async function POST(req: Request) {
   // Límite de fotos para mantener la página ágil y caber en los 60s del plan Hobby.
   let imagesBlock = "";
   if (phase === "build") {
-    const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 4);
-    const imgs = queries.length ? await searchImagesMulti(queries, 1) : [];
+    const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 6);
+    const imgs = queries.length ? await searchImagesMulti(queries, 2) : [];
     imagesBlock = imgs.length
       ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales) ---\n` +
         imgs.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
       : `\n\n(NO hay imágenes provistas: usa visuales premium por CSS — gradientes/mesh/SVG — y NO uses <img> externas.)`;
   }
 
-  // Modelos por fase: arquitectura razona (Sonnet, salida corta); build/review generan
-  // mucho código (Haiku, rápido) para caber en 60s.
+  // Vercel Pro (300s): Sonnet 4.6 en todas las fases para máxima calidad.
   const cfg: Record<string, { system: string; model: ClaudeModel; input: string; schema: any; maxTokens: number }> = {
     architect: {
       system: ARCHITECT_SYSTEM,
@@ -136,17 +134,17 @@ export async function POST(req: Request) {
     },
     build: {
       system: BUILD_SYSTEM,
-      model: "claude-haiku-4-5",
+      model: "claude-sonnet-4-6",
       input: `Construye el proyecto según este PROJECT.md:\n\n${projectMd || prompt}${imagesBlock}`,
       schema: SCHEMAS.build,
-      maxTokens: 13000,
+      maxTokens: 16000,
     },
     review: {
       system: REVIEW_SYSTEM,
-      model: "claude-haiku-4-5",
+      model: "claude-sonnet-4-6",
       input: `PROJECT.md:\n${projectMd}\n\n--- HTML a auditar ---\n${code}`,
       schema: SCHEMAS.review,
-      maxTokens: 1800,
+      maxTokens: 2200,
     },
   };
 

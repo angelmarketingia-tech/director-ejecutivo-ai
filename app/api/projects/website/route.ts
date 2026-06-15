@@ -5,7 +5,7 @@ import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro
 
 const SCHEMA = {
   type: "object",
@@ -61,11 +61,10 @@ export async function POST(req: Request) {
     const res = await withSpend(req, `web:${name}`, () =>
       runRaw<{ html: string; summary: string }>({
         system: SYSTEM,
-        // Una sola llamada (sin encadenar): Haiku genera el HTML completo rápido y cabe en 60s.
-        model: "claude-haiku-4-5",
+        model: "claude-sonnet-4-6", // Vercel Pro: máxima calidad de diseño
         input,
         schema: SCHEMA as unknown as Record<string, unknown>,
-        maxTokens: 8000,
+        maxTokens: 14000,
       })
     );
     return NextResponse.json({ ok: true, budget: getBudget(), html: res.data.html, summary: res.data.summary });

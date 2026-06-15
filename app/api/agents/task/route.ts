@@ -8,9 +8,8 @@ import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
-// 60s = compatible con el plan Hobby de Vercel. En Pro súbelo a 300 para corridas
-// largas de Fable 5 (preset Premium con subagentes).
-export const maxDuration = 60;
+// Vercel Pro: hasta 300s → permite Sonnet + síntesis completa con subagentes.
+export const maxDuration = 300;
 
 const DELIVERABLE_SCHEMA = {
   type: "object",
@@ -67,11 +66,8 @@ export async function POST(req: Request) {
           { label: "Crítico de calidad", instruction: "Eleva el estándar: claridad, rigor y utilidad para el equipo." },
         ];
 
-  // Una tarea de área hace 3-4 llamadas a Claude EN CADENA (borrador → subagentes →
-  // síntesis). Para que quepa en el límite de 60s del plan Hobby usamos el modelo RÁPIDO
-  // (Haiku); la calidad la aporta el bucle de subagentes. El preset (económica/premium)
-  // sigue rigiendo el pipeline comercial, que sí va lead por lead sin encadenar.
-  const model: ClaudeModel = "claude-haiku-4-5";
+  // Vercel Pro: Sonnet 4.6 para entregables de máxima calidad (con el bucle de subagentes).
+  const model: ClaudeModel = "claude-sonnet-4-6";
 
   try {
     const result = await withSpend(req, `tarea:${area}:${name}`, () => runWithSubagents<{
@@ -81,11 +77,11 @@ export async function POST(req: Request) {
     }>({
       system: buildAreaAgentSystem(name, role, area),
       model,
-      input: `Tarea (de inicio a fin): ${task}\n\nEl campo "deliverable" DEBE contener el ENTREGABLE COMPLETO y detallado (NO un título ni un resumen): texto final listo para usar, bien estructurado y accionable, ~400-1300 palabras. Usa "summary" solo para una frase de cierre. No dejes el deliverable vacío ni como encabezado.`,
+      input: `Tarea (de inicio a fin): ${task}\n\nEl campo "deliverable" DEBE contener el ENTREGABLE COMPLETO, detallado y de ALTA CALIDAD (texto final listo para usar, bien estructurado y accionable). Usa "summary" solo para una frase de cierre. No dejes el deliverable vacío ni como encabezado.`,
       schema: DELIVERABLE_SCHEMA as unknown as Record<string, unknown>,
       subagents,
-      maxTokens: 6000,
-      synthesize: false,
+      maxTokens: 8000,
+      synthesize: true,
     }));
     return NextResponse.json({ ok: true, model, budget: getBudget(), ...result });
   } catch (err: any) {
