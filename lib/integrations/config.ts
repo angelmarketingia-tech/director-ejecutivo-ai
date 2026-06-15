@@ -20,6 +20,8 @@ export const env = {
   mapsKey: process.env.GOOGLE_MAPS_API_KEY,
   calendarId: process.env.GOOGLE_CALENDAR_ID,
   anthropicKey: process.env.ANTHROPIC_API_KEY,
+  pexelsKey: process.env.PEXELS_API_KEY,
+  unsplashKey: process.env.UNSPLASH_ACCESS_KEY,
 };
 
 /** true si la integración tiene credenciales y NO estamos forzando demo. */

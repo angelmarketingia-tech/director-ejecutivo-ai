@@ -53,9 +53,9 @@ function ProjectBuilder() {
     if (!a.ok) return fail(a);
     setProjectMd(a.projectMd);
 
-    // 2) IMPLEMENTADOR → código funcional
+    // 2) IMPLEMENTADOR → código funcional (con imágenes reales que pidió el Arquitecto)
     setPhase("build");
-    const b = await step({ phase: "build", prompt, projectMd: a.projectMd });
+    const b = await step({ phase: "build", prompt, projectMd: a.projectMd, imageQueries: a.imageQueries });
     if (!b.ok) return fail(b);
     setHtml(b.html);
 

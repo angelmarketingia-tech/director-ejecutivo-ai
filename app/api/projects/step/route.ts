@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runRaw, type ClaudeModel } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { searchImagesMulti, imagesEnabled } from "@/lib/integrations/images";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,8 +21,11 @@ PROJECT.md claro y accionable en Markdown. Incluye: # Título, Objetivo, Usuario
 (para web: HTML+CSS+JS en UN archivo autónomo, sin dependencias externas salvo imágenes),
 Páginas/Secciones, Componentes, Datos/Estado, y "## Criterios de aceptación" como lista
 verificable (checkboxes "- [ ]"). Conciso pero completo y realista. Español de Colombia.
+Para una landing, mantén el alcance ENFOCADO: máximo 6 secciones.
 IMPORTANTE: escribe el PROJECT.md COMPLETO de principio a fin; NO lo cortes a media frase.
-Devuelve solo el markdown en el campo projectMd.`;
+Además, en "imageQueries" devuelve 4-6 términos de búsqueda EN INGLÉS para fotos de stock
+relevantes al proyecto (ej. "llanero restaurant grilled meat", "cozy cafe interior",
+"barbershop haircut"). Específicos del rubro, no genéricos. Devuelve projectMd + imageQueries.`;
 
 const BUILD_SYSTEM = `Eres un INGENIERO FRONT-END SENIOR y diseñador de producto de clase mundial (nivel
 agencia premium / calidad Awwwards). Construyes una web de UNA sola página en UN archivo HTML
@@ -38,9 +42,16 @@ ESTÁNDARES OBLIGATORIOS DE NIVEL SENIOR:
 - Animaciones de entrada al hacer scroll con IntersectionObserver (fade + translate sutiles, performantes).
 - Componentes pulidos: navbar con cambio al hacer scroll, tarjetas con borde/sombra fina, ICONOS como SVG inline,
   secciones (hero, características/servicios, prueba social/testimonios, CTA final, footer completo).
-- Responsivo impecable mobile-first, SIN scroll horizontal. Imágenes de https://images.unsplash.com con loading="lazy".
+- Imágenes: usa EXCLUSIVAMENTE las URLs reales provistas en "IMÁGENES DISPONIBLES" (NO inventes URLs;
+  las inventadas se rompen). Úsalas con loading="lazy", object-fit: cover y alt descriptivo. Apóyate en ellas
+  para un hero a pantalla, galería y fondos con overlay. Si NO se provee ninguna, NO uses <img> externas:
+  crea visuales premium con CSS (gradientes/mesh, formas SVG, patrones) para que NUNCA haya imágenes rotas.
+- Responsivo impecable mobile-first, SIN scroll horizontal.
 - Accesibilidad: HTML semántico (<header><main><section><footer>), contraste AA, alt en imágenes, aria donde aplique.
 - JS vanilla, mínimo y SIN errores de consola. Sin frameworks. Única dependencia externa permitida: Google Fonts + Unsplash.
+
+EFICIENCIA (clave): código COMPACTO. CSS conciso sin repetir, sin comentarios largos. Logra el impacto con
+imágenes reales, gradientes y tipografía — NO con miles de líneas. Apunta a un archivo de ~14-22 KB.
 
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
@@ -56,8 +67,12 @@ const SCHEMAS = {
   architect: {
     type: "object",
     additionalProperties: false,
-    properties: { projectMd: { type: "string" }, summary: { type: "string" } },
-    required: ["projectMd", "summary"],
+    properties: {
+      projectMd: { type: "string" },
+      summary: { type: "string" },
+      imageQueries: { type: "array", items: { type: "string" } },
+    },
+    required: ["projectMd", "summary", "imageQueries"],
   },
   build: {
     type: "object",
@@ -86,11 +101,25 @@ export async function POST(req: Request) {
   const prompt = vstr((data as any)?.prompt, 4000);
   const projectMd = vstr((data as any)?.projectMd, 20_000) ?? "";
   const code = vstr((data as any)?.code, 60_000) ?? "";
+  const imageQueries: string[] = Array.isArray((data as any)?.imageQueries)
+    ? (data as any).imageQueries.map((q: any) => vstr(q, 80)).filter(Boolean).slice(0, 6)
+    : [];
   if (!phase || !["architect", "build", "review"].includes(phase)) {
     return NextResponse.json({ ok: false, error: "Fase inválida" }, { status: 400 });
   }
   if (phase === "architect" && !prompt) {
     return NextResponse.json({ ok: false, error: "Falta 'prompt' del proyecto" }, { status: 400 });
+  }
+
+  // Imágenes REALES para el build (URLs que sí cargan, relevantes al rubro).
+  let imagesBlock = "";
+  if (phase === "build") {
+    const queries = imageQueries.length ? imageQueries : prompt ? [prompt] : [];
+    const imgs = queries.length ? await searchImagesMulti(queries, 2) : [];
+    imagesBlock = imgs.length
+      ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales) ---\n` +
+        imgs.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
+      : `\n\n(NO hay imágenes provistas: usa visuales premium por CSS — gradientes/mesh/SVG — y NO uses <img> externas.)`;
   }
 
   // Modelos por fase: arquitectura razona (Sonnet, salida corta); build/review generan
@@ -106,16 +135,16 @@ export async function POST(req: Request) {
     build: {
       system: BUILD_SYSTEM,
       model: "claude-haiku-4-5",
-      input: `Construye el proyecto según este PROJECT.md:\n\n${projectMd || prompt}`,
+      input: `Construye el proyecto según este PROJECT.md:\n\n${projectMd || prompt}${imagesBlock}`,
       schema: SCHEMAS.build,
-      maxTokens: 8000,
+      maxTokens: 13000,
     },
     review: {
       system: REVIEW_SYSTEM,
       model: "claude-haiku-4-5",
       input: `PROJECT.md:\n${projectMd}\n\n--- HTML a revisar ---\n${code}`,
       schema: SCHEMAS.review,
-      maxTokens: 8000,
+      maxTokens: 13000,
     },
   };
 
