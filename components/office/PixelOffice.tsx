@@ -26,8 +26,13 @@ export function PixelOffice() {
 
   const [names, setNames] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState(false);
+  const [team, setTeam] = useState<any[]>([]);
   useEffect(() => {
     try { setNames(JSON.parse(localStorage.getItem("agentNames") || "{}")); } catch {}
+    const load = () => fetch("/api/team").then((r) => r.json()).then((j) => { if (j.ok) setTeam(j.team); }).catch(() => {});
+    load();
+    const id = setInterval(load, 15000); // refleja en vivo lo que el equipo registra
+    return () => clearInterval(id);
   }, []);
   function rename(id: string, v: string) {
     const next = { ...names, [id]: v };
@@ -43,7 +48,8 @@ export function PixelOffice() {
     ...(["marketing", "ingenieria", "directiva", "rrhh"] as const).flatMap((ar) => (areaAgents[ar] ?? []).map((a) => ({ id: a.id, def: a.name }))),
   ];
 
-  const dataRef = useRef<{ rooms: Room[]; atlas: Worker }>({ rooms: [], atlas: { id: "director", name: "ATLAS", color: "#E8C766", task: "", working: true } });
+  type Daptux = { id: string; name: string; role: string; task: string; startedAt: number | null; color: string };
+  const dataRef = useRef<{ rooms: Room[]; atlas: Worker; daptux: Daptux[] }>({ rooms: [], atlas: { id: "director", name: "ATLAS", color: "#E8C766", task: "", working: true }, daptux: [] });
   useEffect(() => {
     const en = agentEnabled;
     const commercial = agents.filter((a) => a.id !== "director").map((a) => ({ id: a.id, name: nm(a.id, a.name), color: a.color, task: a.currentTask ?? a.role, working: en[a.id] !== false && a.status !== "idle" }));
@@ -58,8 +64,13 @@ export function PixelOffice() {
         { area: "rrhh", label: "Recursos Humanos", color: meta("rrhh").color, workers: dept("rrhh").slice(0, 4) },
       ],
       atlas: { id: "director", name: nm("director", agents.find((a) => a.id === "director")?.name ?? "ATLAS"), color: "#E8C766", task: agents.find((a) => a.id === "director")?.currentTask ?? "Coordinando la compañía", working: true },
+      daptux: (["angel", "david", "andres", "juan"] as const).map((id) => {
+        const m = team.find((x) => x.id === id);
+        const color = id === "angel" || id === "david" ? "#E8C766" : "#22D3EE";
+        return { id, name: m?.name ?? id, role: m?.role ?? (id === "angel" || id === "david" ? "CEO · Dirección" : "Programador creativo"), task: m?.current?.task ?? "", startedAt: m?.current?.startedAt ?? null, color };
+      }),
     };
-  }, [agents, areaAgents, agentEnabled, names]);
+  }, [agents, areaAgents, agentEnabled, names, team]);
 
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
@@ -72,18 +83,25 @@ export function PixelOffice() {
 
     const R = (x: number, y: number, w: number, h: number, c: string) => { c2d.fillStyle = c; c2d.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 
+    const ago = (ts: number | null) => {
+      if (!ts) return "";
+      const s = (Date.now() - ts) / 1000;
+      if (s < 60) return Math.floor(s) + "s"; if (s < 3600) return Math.floor(s / 60) + "m"; if (s < 86400) return Math.floor(s / 3600) + "h"; return Math.floor(s / 86400) + "d";
+    };
+
     function layout() {
-      const parent = cv.parentElement; if (!parent) return { cols: 2, rowH: 0, winH: 0, rows: 0 };
+      const parent = cv.parentElement; if (!parent) return { cols: 2, rowH: 0, winH: 0, rows: 0, daptuxH: 0 };
       W = parent.clientWidth;
       const cols = W > 1000 ? 3 : W > 680 ? 2 : 1;
       const rooms = 6; // 5 áreas + ATLAS
       const rows = Math.ceil(rooms / cols);
       const winH = Math.round(Math.min(150, W * 0.13));
+      const daptuxH = 180;
       const rowH = 210;
-      H = winH + rows * rowH;
+      H = winH + daptuxH + rows * rowH;
       cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
       c2d.setTransform(dpr, 0, 0, dpr, 0, 0); c2d.imageSmoothingEnabled = false;
-      return { cols, rowH, winH, rows };
+      return { cols, rowH, winH, rows, daptuxH };
     }
 
     function dayState() {
@@ -214,18 +232,64 @@ export function PixelOffice() {
       hits.push({ x: rx, y: ry, w: rw, h: rh, area: atlas ? "hq" : r!.area });
     }
 
+    function daptuxPerson(cx: number, topY: number, p: Daptux, idx: number) {
+      const working = !!p.startedAt;
+      character(cx, topY + 12, { id: p.id, name: p.name, color: p.color, task: p.task, working }, idx);
+      c2d.fillStyle = "#eaf0ff"; c2d.font = "700 11px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText(p.name, cx, topY + 58);
+      c2d.fillStyle = p.color; c2d.font = "600 8px ui-sans-serif"; c2d.fillText(p.role.toUpperCase(), cx, topY + 68);
+      // burbuja: qué hace + hace cuánto (en vivo)
+      const txt = working ? `${(p.task || "Trabajando").slice(0, 26)} · hace ${ago(p.startedAt)}` : "disponible";
+      c2d.font = "500 8px ui-monospace, monospace";
+      const tw = Math.min(180, c2d.measureText(txt).width + 14);
+      c2d.fillStyle = working ? "rgba(12,30,22,0.95)" : "rgba(20,24,34,0.9)"; rr(cx - tw / 2, topY - 8, tw, 15, 4); c2d.fill();
+      c2d.strokeStyle = working ? "rgba(52,211,153,0.5)" : "rgba(90,103,140,0.4)"; c2d.lineWidth = 1; c2d.stroke();
+      c2d.fillStyle = working ? "#9af0c8" : "#8aa0c0"; c2d.textAlign = "center"; c2d.fillText(txt, cx, topY + 3);
+    }
+
+    function drawDaptux(top: number, h: number) {
+      const rx = 6, ry = top + 6, rw = W - 12, rh = h - 12;
+      // sala premium
+      const g = c2d.createLinearGradient(0, ry, 0, ry + rh); g.addColorStop(0, "#0f1626"); g.addColorStop(1, "#141d31");
+      c2d.fillStyle = g; c2d.fillRect(rx, ry, rw, rh);
+      const tile = 30; for (let y = ry; y < ry + rh; y += tile) for (let x = rx; x < rx + rw; x += tile) if (((x / tile + y / tile) | 0) % 2) R(x, y, tile, tile, "#101a2c");
+      c2d.strokeStyle = "rgba(232,199,102,0.5)"; c2d.lineWidth = 2; c2d.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+      // letrero
+      c2d.fillStyle = "rgba(8,12,22,0.9)"; rr(rx + 12, ry + 10, 168, 20, 5); c2d.fill();
+      c2d.fillStyle = "#E8C766"; c2d.font = "800 12px ui-sans-serif"; c2d.textAlign = "left"; c2d.fillText("🏢 OFICINA DAPTUX", rx + 20, ry + 24);
+      decor("sofa", rx, ry, rw, rh, "#E8C766"); decor("tv", rx + 10, ry, rw, rh, "#22D3EE");
+
+      const dx = dataRef.current.daptux;
+      const ceos = dx.filter((p) => p.id === "angel" || p.id === "david");
+      const devs = dx.filter((p) => p.id === "andres" || p.id === "juan");
+      const baseY = ry + 56;
+      drawCluster(rx + rw * 0.27, baseY, "DIRECCIÓN", ceos, "#E8C766");
+      drawCluster(rx + rw * 0.72, baseY, "PROGRAMADORES CREATIVOS", devs, "#22D3EE");
+      hits.push({ x: rx, y: ry, w: rw, h: rh, area: "ingenieria" }); // click → Desarrollo (panel del equipo)
+    }
+
+    function drawCluster(cx: number, topY: number, label: string, people: Daptux[], color: string) {
+      const sep = 42;
+      const cxs = people.length === 2 ? [cx - sep, cx + sep] : [cx];
+      // mesa larga compartida ("pegados")
+      const deskW = sep * 2 + 70, deskX = cx - deskW / 2, deskY = topY + 50;
+      R(deskX, deskY, deskW, 8, "#6b4b2a"); R(deskX, deskY + 8, 3, 14, "#553c22"); R(deskX + deskW - 3, deskY + 8, 3, 14, "#553c22");
+      people.forEach((p, i) => daptuxPerson(cxs[i], topY, p, i + (label[0] === "D" ? 0 : 5)));
+      c2d.fillStyle = color; c2d.font = "700 8px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText(label, cx, deskY + 32);
+    }
+
     function loop() {
-      const { cols, rowH, winH } = layout();
+      const { cols, rowH, winH, daptuxH } = layout();
       hits = [];
       c2d.clearRect(0, 0, W, H);
       drawWindow(winH);
+      drawDaptux(winH, daptuxH);
       const rooms = dataRef.current.rooms;
       const cellW = W / cols;
       // 5 áreas + ATLAS al final
       const all: ({ r: Room } | { atlas: Worker })[] = [...rooms.map((r) => ({ r })), { atlas: dataRef.current.atlas }];
       all.forEach((item, i) => {
         const col = i % cols, rowi = Math.floor(i / cols);
-        const rx = cellW * col, ry = winH + rowi * rowH;
+        const rx = cellW * col, ry = winH + daptuxH + rowi * rowH;
         if ("atlas" in item) room(rx + 4, ry + 4, cellW - 8, rowH - 8, null, item.atlas);
         else room(rx + 4, ry + 4, cellW - 8, rowH - 8, item.r);
       });

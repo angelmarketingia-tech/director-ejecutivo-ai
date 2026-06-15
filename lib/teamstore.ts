@@ -23,10 +23,19 @@ export interface TeamMember {
 
 const KEY = "team:v1";
 
+const ROLES: Record<string, string> = {
+  angel: "CEO · Dirección",
+  david: "CEO · Dirección",
+  andres: "Programador creativo",
+  juan: "Programador creativo",
+};
+
 function seed(): TeamMember[] {
   return [
-    { id: "juan", name: "Juan", role: "Desarrollo web", current: null, completed: [] },
-    { id: "david", name: "David", role: "Desarrollo web", current: null, completed: [] },
+    { id: "angel", name: "Angel", role: ROLES.angel, current: null, completed: [] },
+    { id: "david", name: "David", role: ROLES.david, current: null, completed: [] },
+    { id: "andres", name: "Andrés", role: ROLES.andres, current: null, completed: [] },
+    { id: "juan", name: "Juan", role: ROLES.juan, current: null, completed: [] },
   ];
 }
 
@@ -36,11 +45,15 @@ export function teamEnabled(): boolean {
 
 export async function getTeam(): Promise<TeamMember[]> {
   if (!kvConfigured()) return seed();
-  const t = await kvGetJSON<TeamMember[]>(KEY);
+  let t = await kvGetJSON<TeamMember[]>(KEY);
   if (!t || !Array.isArray(t) || t.length === 0) return seed();
-  // Garantiza que Juan y David existan siempre.
+  // Garantiza que el equipo Daptux exista y mantiene roles correctos.
   const base = seed();
   for (const s of base) if (!t.find((m) => m.id === s.id)) t.push(s);
+  for (const m of t) if (ROLES[m.id]) m.role = ROLES[m.id];
+  // Orden: CEOs primero, luego programadores.
+  const order = ["angel", "david", "andres", "juan"];
+  t = t.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   return t;
 }
 

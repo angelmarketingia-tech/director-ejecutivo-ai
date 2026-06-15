@@ -21,6 +21,8 @@ export function getUsers(): AppUser[] {
     { id: process.env.APP_USER || "admin", name: "Admin", role: "admin", password: process.env.APP_PASSWORD || "" },
     { id: "juan", name: "Juan", role: "member", password: process.env.JUAN_PASSWORD || "juan2026*" },
     { id: "david", name: "David", role: "member", password: process.env.DAVID_PASSWORD || "david2026*" },
+    { id: "andres", name: "Andrés", role: "member", password: process.env.ANDRES_PASSWORD || "andres2026*" },
+    { id: "angel", name: "Angel", role: "admin", password: process.env.ANGEL_PASSWORD || "angel2026*" },
   ];
   return users.filter((u) => u.password); // el admin solo existe si tiene contraseña
 }
