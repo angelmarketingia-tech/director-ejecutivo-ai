@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const look = (data as any)?.look ?? {};
   // saneo simple de campos
   const clean: any = {};
-  for (const k of ["name", "skin", "hair", "style", "shirt", "acc", "hat", "hatColor", "outfit"]) if (typeof look[k] === "string") clean[k] = look[k].slice(0, 40);
+  for (const k of ["name", "skin", "hair", "style", "shirt", "acc", "hat", "hatColor", "outfit", "beard", "headset", "headsetColor", "earring"]) if (typeof look[k] === "string") clean[k] = look[k].slice(0, 40);
   const looks = await saveLook(id, clean);
   return NextResponse.json({ ok: true, looks });
 }

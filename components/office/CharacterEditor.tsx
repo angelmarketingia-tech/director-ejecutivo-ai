@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { drawAvatar, resolveLook, SKINS, HAIRS, SHIRTS, STYLES, ACCS, HATS, OUTFITS, type Look } from "@/lib/avatar";
+import { drawAvatar, resolveLook, SKINS, HAIRS, SHIRTS, STYLES, ACCS, HATS, OUTFITS, BEARDS, EARRINGS, type Look } from "@/lib/avatar";
 import { X, Loader2, Check } from "lucide-react";
 
 interface Char { id: string; def: string; color: string }
@@ -72,7 +72,11 @@ export function CharacterEditor({ characters, looks, me, role, onClose, onChange
             <Row label="Outfit"><Options items={OUTFITS} value={L.outfit ?? "shirt"} onPick={(v) => set({ outfit: v })} labels={{ shirt: "Camisa", hoodie: "Hoodie", suit: "Traje" }} /></Row>
             <Row label="Color de camisa"><Swatches items={SHIRTS} value={L.shirt} onPick={(v) => set({ shirt: v })} extra={{ label: "Auto", on: !L.shirt, onPick: () => set({ shirt: "" }) }} /></Row>
             <Row label="Estilo de pelo"><Options items={STYLES} value={L.style ?? resolveLook(cur.id, L).style} onPick={(v) => set({ style: v })} labels={{ short: "Corto", long: "Largo", bald: "Calvo", mohawk: "Mohawk", bun: "Moño", spiky: "Punk", afro: "Afro", ponytail: "Coleta", undercut: "Undercut" }} /></Row>
-            <Row label="Accesorio"><Options items={ACCS} value={L.acc ?? resolveLook(cur.id, L).acc} onPick={(v) => set({ acc: v })} labels={{ headset: "Headset", glasses: "Gafas", none: "Ninguno" }} /></Row>
+            <Row label="Barba"><Options items={BEARDS} value={L.beard ?? resolveLook(cur.id, L).beard} onPick={(v) => set({ beard: v })} labels={{ none: "Ninguna", stubble: "Incipiente", goatee: "Candado", full: "Completa" }} /></Row>
+            <Row label="Gafas"><Options items={ACCS} value={L.acc ?? resolveLook(cur.id, L).acc} onPick={(v) => set({ acc: v })} labels={{ glasses: "Con gafas", none: "Sin gafas" }} /></Row>
+            <Row label="Headset"><Options items={["1", "0"]} value={L.headset ?? "1"} onPick={(v) => set({ headset: v })} labels={{ "1": "Sí", "0": "No" }} /></Row>
+            {(L.headset ?? "1") !== "0" && <Row label="Color de headset"><Swatches items={SHIRTS} value={L.headsetColor} onPick={(v) => set({ headsetColor: v })} /></Row>}
+            <Row label="Arete"><Options items={EARRINGS} value={L.earring ?? "none"} onPick={(v) => set({ earring: v })} labels={{ none: "Ninguno", gold: "Oro", silver: "Plata" }} /></Row>
             <Row label="Gorro"><Options items={HATS} value={L.hat ?? "none"} onPick={(v) => set({ hat: v })} labels={{ none: "Ninguno", cap: "Gorra", beanie: "Gorro" }} /></Row>
             {(L.hat && L.hat !== "none") && <Row label="Color de gorro"><Swatches items={SHIRTS} value={L.hatColor} onPick={(v) => set({ hatColor: v })} /></Row>}
           </div>

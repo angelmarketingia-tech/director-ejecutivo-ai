@@ -15,6 +15,8 @@ export interface Look {
   outfit?: string;  // shirt | hoodie | suit
   beard?: string;   // none | stubble | goatee | full
   headset?: string; // "1" usa headset, "0" no
+  headsetColor?: string;
+  earring?: string; // none | gold | silver
 }
 
 export const SKINS = ["#ffe0bd", "#f1c9a0", "#e8b98a", "#d49a6a", "#c68642", "#a86b3c", "#8d5524", "#5a3825"];
@@ -25,6 +27,7 @@ export const ACCS = ["none", "glasses"];
 export const HATS = ["none", "cap", "beanie"];
 export const OUTFITS = ["shirt", "hoodie", "suit"];
 export const BEARDS = ["none", "stubble", "goatee", "full"];
+export const EARRINGS = ["none", "gold", "silver"];
 
 export function hashId(s: string): number { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 
@@ -48,6 +51,8 @@ export function resolveLook(id: string, p: Look = {}) {
     outfit: p.outfit || "shirt",
     beard: p.beard || ((h % 6) === 0 ? "full" : (h % 6) === 1 ? "goatee" : "none"),
     headset: p.headset ?? "1",
+    headsetColor: p.headsetColor as string | undefined,
+    earring: p.earring || "none",
   };
 }
 
@@ -58,7 +63,8 @@ export function drawAvatar(
   look: ReturnType<typeof resolveLook>,
   baseColor: string,
   scale = 1,
-  frame = 0
+  frame = 0,
+  mood: "work" | "idle" | "happy" = "work"
 ) {
   const R = (x: number, y: number, w: number, h: number, c: string) => { g.fillStyle = c; g.fillRect(Math.round(cx + x * scale), Math.round(py + y * scale), Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))); };
   const skin = look.skin, skinD = shade(skin, 0.82), hair = look.hair, hairD = shade(hair, 0.7);
@@ -84,6 +90,7 @@ export function drawAvatar(
   R(-9, 2, 18, 17, skin);
   R(-9, 2, 18, 2, shade(skin, 1.08));           // frente con luz
   R(-10, 9, 2, 4, skin); R(8, 9, 2, 4, skin);   // orejas
+  if (look.earring !== "none") R(9, 13, 2, 2, look.earring === "gold" ? "#E8C766" : "#cfd6e4"); // arete
 
   // ── Pelo (frontal) ──
   if (look.style !== "bald") {
@@ -102,13 +109,17 @@ export function drawAvatar(
 
   // ── Cara ──
   R(-6, 7, 3, 1, hairD); R(3, 7, 3, 1, hairD);   // cejas
-  if (blink) { R(-6, 10, 3, 1, skinD); R(3, 10, 3, 1, skinD); }
+  const closed = blink || mood === "idle";
+  if (closed) { R(-6, 10, 3, 1, skinD); R(3, 10, 3, 1, skinD); }
   else {
     R(-6, 9, 3, 3, "#ffffff"); R(3, 9, 3, 3, "#ffffff"); // ojos
     R(-5, 10, 2, 2, "#26344d"); R(4, 10, 2, 2, "#26344d"); // pupilas
   }
   R(-1, 12, 2, 2, skinD);                         // nariz
-  R(-3, 15, 6, 1, shade(skin, 0.6));              // boca
+  const mouthC = shade(skin, 0.55);
+  if (mood === "happy") { R(-3, 15, 6, 1, mouthC); R(-4, 14, 1, 1, mouthC); R(3, 14, 1, 1, mouthC); } // sonrisa
+  else if (mood === "idle") { R(-1, 15, 2, 2, mouthC); }                                              // boquita (dormido)
+  else { R(-3, 15, 5, 1, mouthC); }                                                                   // neutral
 
   // ── Barba ──
   if (look.beard === "full") { R(-9, 13, 18, 6, hair); R(-9, 11, 2, 6, hair); R(7, 11, 2, 6, hair); R(-3, 15, 6, 1, shade(skin, 0.6)); }
@@ -122,12 +133,21 @@ export function drawAvatar(
     R(-2, 10, 4, 1, "#11203a");
   }
 
-  // ── Headset ──
+  // ── Headset (con color) ──
+  const hsCol = look.headsetColor || "#1b2a3d";
   if (look.headset !== "0" && look.hat === "none") {
-    R(-11, -1, 22, 3, "#15202f"); R(-12, 7, 4, 8, "#1b2a3d"); R(8, 7, 4, 8, "#1b2a3d");
-  } else if (look.headset !== "0") { R(-12, 7, 4, 8, "#1b2a3d"); R(8, 7, 4, 8, "#1b2a3d"); }
+    R(-11, -1, 22, 3, shade(hsCol, 0.85)); R(-12, 7, 4, 8, hsCol); R(8, 7, 4, 8, hsCol);
+  } else if (look.headset !== "0") { R(-12, 7, 4, 8, hsCol); R(8, 7, 4, 8, hsCol); }
 
   // ── Gorro ──
   if (look.hat === "cap") { R(-10, -2, 20, 6, hatCol); R(-12, 3, 14, 2, shade(hatCol, 0.7)); }
   if (look.hat === "beanie") { R(-11, -4, 22, 9, hatCol); R(-11, 3, 22, 2, shade(hatCol, 0.6)); }
+
+  // ── Zzz (inactivo) ──
+  if (mood === "idle") {
+    g.fillStyle = "#9fb2d6"; g.textAlign = "left";
+    const t = (frame / 26) % 6;
+    g.font = `${Math.round(7 * scale)}px ui-sans-serif`; g.fillText("z", Math.round(cx + (9 + t) * scale), Math.round(py + (-3 - t) * scale));
+    g.font = `${Math.round(10 * scale)}px ui-sans-serif`; g.fillText("Z", Math.round(cx + (13 + t) * scale), Math.round(py + (-9 - t) * scale));
+  }
 }

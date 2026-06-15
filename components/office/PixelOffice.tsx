@@ -143,7 +143,8 @@ export function PixelOffice() {
 
     function character(cx: number, py: number, w: Worker, idx: number) {
       const bob = reduce ? 0 : Math.round(Math.sin(frame / 22 + idx) * 1.3);
-      drawAvatar(c2d, cx, py + bob, resolveLook(w.id, looksRef.current[w.id]), w.color, 1, frame + idx * 37);
+      const mood: "work" | "idle" | "happy" = !w.working ? "idle" : (((frame + idx * 53) % 660) < 70 ? "happy" : "work");
+      drawAvatar(c2d, cx, py + bob, resolveLook(w.id, looksRef.current[w.id]), w.color, 1, frame + idx * 37, mood);
       return { bob };
     }
 
