@@ -125,6 +125,17 @@ test("UX · configuración: presets, canales, subagentes y toggles de agentes", 
   await assertClean(errors);
 });
 
+test("UX · Desarrollo: generador de sitios web visible y responde al generar", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-ingenieria").click();
+  await expect(page.getByTestId("btn-web-forge")).toBeVisible();
+  await page.getByTestId("web-forge-name").fill("Donde Riaño");
+  await page.getByTestId("btn-web-forge").click();
+  // Sin clave real responde honesto; con clave genera la vista previa. En ambos casos hay feedback.
+  await expect(page.getByTestId("web-forge-msg")).toBeVisible({ timeout: 60_000 });
+  await assertClean(errors);
+});
+
 test("UX · marketing: toggle agente, ejecutar tarea (panel), cerrar con Escape", async ({ page }) => {
   const errors = spyErrors(page);
   await page.getByTestId("area-marketing").click();
