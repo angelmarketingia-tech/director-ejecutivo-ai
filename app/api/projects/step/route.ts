@@ -20,6 +20,7 @@ PROJECT.md claro y accionable en Markdown. Incluye: # Título, Objetivo, Usuario
 (para web: HTML+CSS+JS en UN archivo autónomo, sin dependencias externas salvo imágenes),
 Páginas/Secciones, Componentes, Datos/Estado, y "## Criterios de aceptación" como lista
 verificable (checkboxes "- [ ]"). Conciso pero completo y realista. Español de Colombia.
+IMPORTANTE: escribe el PROJECT.md COMPLETO de principio a fin; NO lo cortes a media frase.
 Devuelve solo el markdown en el campo projectMd.`;
 
 const BUILD_SYSTEM = `Eres IMPLEMENTADOR full-stack senior. Recibes un PROJECT.md y construyes el proyecto
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
       model: "claude-sonnet-4-6",
       input: `Idea del proyecto:\n${prompt}`,
       schema: SCHEMAS.architect,
-      maxTokens: 3500,
+      maxTokens: 5000,
     },
     build: {
       system: BUILD_SYSTEM,
