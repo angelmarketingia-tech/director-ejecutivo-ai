@@ -9,6 +9,7 @@ import {
 } from "@/lib/agents/workers";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized } from "@/lib/security";
+import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
 // 60s = plan Hobby de Vercel. En Pro súbelo a 300 para corridas largas de Fable 5.
@@ -43,29 +44,17 @@ export async function POST(req: Request) {
   }
 
   try {
-    let result;
-    switch (body.agent) {
-      case "prospect":
-        result = await prospect(body.payload);
-        break;
-      case "research":
-        result = await research(body.payload);
-        break;
-      case "scoring":
-        result = await score(body.payload);
-        break;
-      case "email":
-        result = await writeEmail(body.payload);
-        break;
-      case "voice":
-        result = await planCall(body.payload);
-        break;
-      case "director":
-        result = await direct(body.payload);
-        break;
-      default:
-        return NextResponse.json({ error: "Agente desconocido" }, { status: 400 });
-    }
+    const result = await withSpend(req, `agente:${body.agent}`, async () => {
+      switch (body.agent) {
+        case "prospect": return await prospect(body.payload);
+        case "research": return await research(body.payload);
+        case "scoring": return await score(body.payload);
+        case "email": return await writeEmail(body.payload);
+        case "voice": return await planCall(body.payload);
+        case "director": return await direct(body.payload);
+        default: throw new Error("__UNKNOWN_AGENT__");
+      }
+    });
     return NextResponse.json({ ok: true, budget: getBudget(), ...result });
   } catch (err: any) {
     // Casos esperados (sin clave / presupuesto): HTTP 200 con bandera (consola limpia).

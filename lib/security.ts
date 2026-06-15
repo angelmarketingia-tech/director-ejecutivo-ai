@@ -85,6 +85,15 @@ export function secretConfigured(): boolean {
   return !!process.env.API_SHARED_SECRET;
 }
 
+/** Usuario autenticado actual (de la cookie de login). null si no hay sesión válida. */
+export async function currentUser(req: Request): Promise<{ id: string; role: "admin" | "member"; name: string } | null> {
+  const { userFromToken, AUTH_COOKIE } = await import("@/lib/auth");
+  const { roleOf, nameOf } = await import("@/lib/users");
+  const id = await userFromToken(getCookie(req, AUTH_COOKIE));
+  if (!id) return null;
+  return { id, role: roleOf(id), name: nameOf(id) };
+}
+
 /** Valida string no vacío con tope de longitud. */
 export function vstr(v: unknown, max: number): string | null {
   return typeof v === "string" && v.trim().length > 0 && v.length <= max ? v : null;

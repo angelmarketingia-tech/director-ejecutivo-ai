@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { makeToken, AUTH_COOKIE, COOKIE_OPTS } from "@/lib/auth";
 import { rateLimit, readJsonLimited } from "@/lib/security";
+import { findUserByCredentials, getUsers } from "@/lib/users";
 
 export const runtime = "nodejs";
 
-// POST /api/auth/login — verifica usuario/contraseña y entrega cookie firmada.
+// POST /api/auth/login — verifica usuario/contraseña (admin, juan, david) y entrega cookie firmada.
 export async function POST(req: Request) {
   // Anti fuerza bruta.
   const rl = rateLimit(req, "login", 10, 60_000);
@@ -16,18 +17,17 @@ export async function POST(req: Request) {
   const user = String(data?.user ?? "").trim();
   const password = String(data?.password ?? "");
 
-  const U = process.env.APP_USER || "admin";
-  const P = process.env.APP_PASSWORD || "";
-
-  if (!P) {
+  if (getUsers().length === 0) {
     return NextResponse.json({ ok: false, error: "El login no está configurado en el servidor." }, { status: 500 });
   }
-  if (user !== U || password !== P) {
+
+  const match = findUserByCredentials(user, password);
+  if (!match) {
     return NextResponse.json({ ok: false, error: "Usuario o contraseña incorrectos." }, { status: 401 });
   }
 
-  const token = await makeToken(user);
-  const res = NextResponse.json({ ok: true });
+  const token = await makeToken(match.id);
+  const res = NextResponse.json({ ok: true, role: match.role, name: match.name });
   res.cookies.set(AUTH_COOKIE, token, COOKIE_OPTS);
   return res;
 }

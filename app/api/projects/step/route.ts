@@ -3,6 +3,7 @@ import { runRaw, type ClaudeModel } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { searchImagesMulti, imagesEnabled } from "@/lib/integrations/images";
+import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -151,14 +152,16 @@ export async function POST(req: Request) {
 
   const c = cfg[phase];
   try {
-    const res = await runRaw<any>({
-      system: c.system,
-      model: c.model,
-      input: c.input,
-      schema: c.schema as unknown as Record<string, unknown>,
-      effort: "low",
-      maxTokens: c.maxTokens,
-    });
+    const res = await withSpend(req, `proyecto:${phase}`, () =>
+      runRaw<any>({
+        system: c.system,
+        model: c.model,
+        input: c.input,
+        schema: c.schema as unknown as Record<string, unknown>,
+        effort: "low",
+        maxTokens: c.maxTokens,
+      })
+    );
     return NextResponse.json({ ok: true, phase, budget: getBudget(), ...res.data });
   } catch (err: any) {
     if (err instanceof BudgetExceededError) {

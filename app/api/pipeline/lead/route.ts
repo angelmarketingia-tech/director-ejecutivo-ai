@@ -4,6 +4,7 @@ import { sendEmail } from "@/lib/integrations/email";
 import { isLive, DEMO_MODE } from "@/lib/integrations/config";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, recipientAllowed } from "@/lib/security";
+import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -64,20 +65,20 @@ export async function POST(req: Request) {
   const doSend = (data as any)?.send !== false; // por defecto intenta enviar
 
   try {
-    // 1) ORACLE investiga (Claude real)
-    const r = await research(lead);
-    const researchData = r.data;
-
-    // 2) FORGE califica (Claude real)
-    const sc = await score({ lead, research: researchData, service: SERVICE });
-    const scoring = sc.data;
-
-    // 3) QUILL redacta el mensaje (Claude real). Rellena placeholders + firma real.
-    const em = await writeEmail({ lead, research: researchData, service: SERVICE, seller: SELLER });
-    const email = {
-      subject: fillPlaceholders(em.data.subject, lead).replace(/[,;]\s*$/, ""),
-      body: applySignature(fillPlaceholders(em.data.body, lead)),
-    };
+    // ORACLE investiga + FORGE califica + QUILL redacta (Claude real), gasto atribuido al usuario.
+    const { researchData, scoring, email } = await withSpend(req, `pipeline:${lead.company}`, async () => {
+      const r = await research(lead);
+      const sc = await score({ lead, research: r.data, service: SERVICE });
+      const em = await writeEmail({ lead, research: r.data, service: SERVICE, seller: SELLER });
+      return {
+        researchData: r.data,
+        scoring: sc.data,
+        email: {
+          subject: fillPlaceholders(em.data.subject, lead).replace(/[,;]\s*$/, ""),
+          body: applySignature(fillPlaceholders(em.data.body, lead)),
+        },
+      };
+    });
 
     // 4) Contacto REAL: solo email si hay dirección + Resend configurado + dominio permitido.
     let sent = false;

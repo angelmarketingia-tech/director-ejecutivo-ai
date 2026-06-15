@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { rateLimit, readJsonLimited, authorized, vstr, currentUser } from "@/lib/security";
 import { getTeam, setCurrent, completeTask, deleteTask, teamEnabled } from "@/lib/teamstore";
 
 export const runtime = "nodejs";
@@ -27,6 +27,12 @@ export async function POST(req: Request) {
   const action = vstr((data as any)?.action, 20);
   const memberId = vstr((data as any)?.memberId, 20);
   if (!action || !memberId) return NextResponse.json({ ok: false, error: "Faltan 'action' y 'memberId'" }, { status: 400 });
+
+  // Cada miembro solo edita SU actividad; el admin puede editar a cualquiera.
+  const u = await currentUser(req);
+  if (u && u.role !== "admin" && u.id.toLowerCase() !== memberId.toLowerCase()) {
+    return NextResponse.json({ ok: false, error: "Solo puedes actualizar tu propia actividad." }, { status: 403 });
+  }
 
   let team;
   if (action === "setCurrent") {

@@ -59,19 +59,26 @@ export async function makeToken(user: string): Promise<string> {
 
 /** Verifica firma y expiración del token. */
 export async function verifyToken(token: string | undefined | null): Promise<boolean> {
-  if (!token) return false;
+  return (await userFromToken(token)) !== null;
+}
+
+/** Devuelve el id de usuario si el token es válido y vigente; si no, null. */
+export async function userFromToken(token: string | undefined | null): Promise<string | null> {
+  if (!token) return null;
   const [p, sig] = token.split(".");
-  if (!p || !sig) return false;
+  if (!p || !sig) return null;
   let payload: string;
   try {
     payload = strFromB64url(p);
   } catch {
-    return false;
+    return null;
   }
   const expected = await hmac(payload);
-  if (sig.length !== expected.length || sig !== expected) return false;
-  const exp = Number(payload.split("|")[1]);
-  return Number.isFinite(exp) && Date.now() < exp;
+  if (sig.length !== expected.length || sig !== expected) return null;
+  const [user, expStr] = payload.split("|");
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || Date.now() >= exp) return null;
+  return user || null;
 }
 
 export const COOKIE_OPTS = {

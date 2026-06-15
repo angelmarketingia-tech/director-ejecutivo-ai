@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runRaw } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -57,14 +58,16 @@ export async function POST(req: Request) {
     JSON.stringify({ nombre: name, rubro: category, ciudad: city, telefono: phone, notas: notes }, null, 2);
 
   try {
-    const res = await runRaw<{ html: string; summary: string }>({
-      system: SYSTEM,
-      // Una sola llamada (sin encadenar): Haiku genera el HTML completo rápido y cabe en 60s.
-      model: "claude-haiku-4-5",
-      input,
-      schema: SCHEMA as unknown as Record<string, unknown>,
-      maxTokens: 8000,
-    });
+    const res = await withSpend(req, `web:${name}`, () =>
+      runRaw<{ html: string; summary: string }>({
+        system: SYSTEM,
+        // Una sola llamada (sin encadenar): Haiku genera el HTML completo rápido y cabe en 60s.
+        model: "claude-haiku-4-5",
+        input,
+        schema: SCHEMA as unknown as Record<string, unknown>,
+        maxTokens: 8000,
+      })
+    );
     return NextResponse.json({ ok: true, budget: getBudget(), html: res.data.html, summary: res.data.summary });
   } catch (err: any) {
     if (err instanceof BudgetExceededError) {

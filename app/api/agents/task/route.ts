@@ -5,6 +5,7 @@ import { type Preset } from "@/lib/agents/pricing";
 import type { ClaudeModel } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
+import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
 // 60s = compatible con el plan Hobby de Vercel. En Pro súbelo a 300 para corridas
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
   const model: ClaudeModel = "claude-haiku-4-5";
 
   try {
-    const result = await runWithSubagents<{
+    const result = await withSpend(req, `tarea:${area}:${name}`, () => runWithSubagents<{
       deliverable: string;
       summary: string;
       qualitySelfScore: number;
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
       subagents,
       maxTokens: 6000,
       synthesize: false,
-    });
+    }));
     return NextResponse.json({ ok: true, model, budget: getBudget(), ...result });
   } catch (err: any) {
     // Casos esperados (sin clave / tope de presupuesto): HTTP 200 con bandera, para
