@@ -21,7 +21,7 @@ PROJECT.md claro y accionable en Markdown. Incluye: # Título, Objetivo, Usuario
 (para web: HTML+CSS+JS en UN archivo autónomo, sin dependencias externas salvo imágenes),
 Páginas/Secciones, Componentes, Datos/Estado, y "## Criterios de aceptación" como lista
 verificable (checkboxes "- [ ]"). Conciso pero completo y realista. Español de Colombia.
-Para una landing, mantén el alcance ENFOCADO: máximo 6 secciones.
+Para una landing, alcance ENFOCADO: 4-5 secciones potentes (no más).
 IMPORTANTE: escribe el PROJECT.md COMPLETO de principio a fin; NO lo cortes a media frase.
 Además, en "imageQueries" devuelve 4-6 términos de búsqueda EN INGLÉS para fotos de stock
 relevantes al proyecto (ej. "llanero restaurant grilled meat", "cozy cafe interior",
@@ -50,8 +50,9 @@ ESTÁNDARES OBLIGATORIOS DE NIVEL SENIOR:
 - Accesibilidad: HTML semántico (<header><main><section><footer>), contraste AA, alt en imágenes, aria donde aplique.
 - JS vanilla, mínimo y SIN errores de consola. Sin frameworks. Única dependencia externa permitida: Google Fonts + Unsplash.
 
-EFICIENCIA (clave): código COMPACTO. CSS conciso sin repetir, sin comentarios largos. Logra el impacto con
-imágenes reales, gradientes y tipografía — NO con miles de líneas. Apunta a un archivo de ~14-22 KB.
+EFICIENCIA (CRÍTICO, hay límite de tiempo): código MUY COMPACTO. CSS conciso sin repetir, sin comentarios.
+Logra el impacto con imágenes reales, gradientes y tipografía — NO con miles de líneas. Máximo 4-5 secciones.
+Apunta a un archivo de ~12-17 KB. Si dudas, MENOS secciones pero impecables. Prioriza terminar COMPLETO.
 
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
