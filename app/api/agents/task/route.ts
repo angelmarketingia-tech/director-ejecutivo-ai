@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { buildAreaAgentSystem } from "@/lib/agents/prompts";
 import { runWithSubagents, type SubagentSpec } from "@/lib/agents/subagents";
-import { PRESETS, type Preset } from "@/lib/agents/pricing";
+import { type Preset } from "@/lib/agents/pricing";
+import type { ClaudeModel } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 
@@ -65,10 +66,11 @@ export async function POST(req: Request) {
           { label: "Crítico de calidad", instruction: "Eleva el estándar: claridad, rigor y utilidad para el equipo." },
         ];
 
-  const preset: Preset = (["economica", "equilibrada", "premium"] as const).includes(body?.preset as Preset)
-    ? (body.preset as Preset)
-    : "equilibrada";
-  const model = PRESETS[preset].email; // modelo del agente para la tarea, según preset
+  // Una tarea de área hace 3-4 llamadas a Claude EN CADENA (borrador → subagentes →
+  // síntesis). Para que quepa en el límite de 60s del plan Hobby usamos el modelo RÁPIDO
+  // (Haiku); la calidad la aporta el bucle de subagentes. El preset (económica/premium)
+  // sigue rigiendo el pipeline comercial, que sí va lead por lead sin encadenar.
+  const model: ClaudeModel = "claude-haiku-4-5";
 
   try {
     const result = await runWithSubagents<{
