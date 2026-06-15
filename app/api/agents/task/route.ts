@@ -80,10 +80,10 @@ export async function POST(req: Request) {
     }>({
       system: buildAreaAgentSystem(name, role, area),
       model,
-      input: `Tarea (de inicio a fin): ${task}\n\nEntrega un resultado COMPLETO, bien estructurado y accionable, listo para usar (con el detalle necesario, sin relleno).`,
+      input: `Tarea (de inicio a fin): ${task}\n\nEntrega un resultado COMPLETO, bien estructurado y accionable, listo para usar (con el detalle necesario, sin relleno). Extensión adecuada: máximo ~1300 palabras.`,
       schema: DELIVERABLE_SCHEMA as unknown as Record<string, unknown>,
       subagents,
-      maxTokens: 4500,
+      maxTokens: 6000,
       synthesize: false,
     });
     return NextResponse.json({ ok: true, model, budget: getBudget(), ...result });
@@ -100,6 +100,13 @@ export async function POST(req: Request) {
         noKey: true,
         error: msg,
         hint: "Configura ANTHROPIC_API_KEY en .env.local para ejecutar agentes reales con subagentes.",
+      });
+    }
+    // Resultado cortado por longitud (JSON inválido): mensaje claro, no 500 críptico.
+    if (msg.includes("no es JSON válido")) {
+      return NextResponse.json({
+        ok: false,
+        error: "El resultado fue muy extenso y se cortó. Reintenta o pide una tarea más acotada.",
       });
     }
     // Error inesperado real → 500
