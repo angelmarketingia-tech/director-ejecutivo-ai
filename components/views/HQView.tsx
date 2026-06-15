@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { NeuralBackground } from "@/components/fx/NeuralBackground";
-import { OfficeMap } from "@/components/office/OfficeMap";
+import { PixelOffice } from "@/components/office/PixelOffice";
 import { useDeck } from "@/lib/store";
 import { AREAS } from "@/lib/departments";
 import type { Area } from "@/lib/types";
@@ -67,8 +67,8 @@ export function HQView() {
         </div>
       </div>
 
-      {/* Oficina virtual interactiva */}
-      <OfficeMap />
+      {/* Oficina virtual pixel-art animada */}
+      <PixelOffice />
 
       {/* Áreas */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
