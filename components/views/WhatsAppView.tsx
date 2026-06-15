@@ -2,6 +2,7 @@
 
 import { useDeck } from "@/lib/store";
 import { timeAgo } from "@/lib/utils";
+import { WhatsAppBot } from "@/components/WhatsAppBot";
 import { MessageCircle, ShieldCheck } from "lucide-react";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -16,6 +17,9 @@ export function WhatsAppView() {
   const msgs = useDeck((s) => s.whatsapp);
 
   return (
+    <div className="flex flex-col gap-4">
+      <WhatsAppBot />
+
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
       <div className="panel overflow-hidden">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -71,6 +75,7 @@ export function WhatsAppView() {
           ))}
         </ul>
       </div>
+    </div>
     </div>
   );
 }
