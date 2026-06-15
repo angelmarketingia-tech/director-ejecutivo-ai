@@ -51,9 +51,9 @@ ESTÁNDARES OBLIGATORIOS DE NIVEL SENIOR:
 - Accesibilidad: HTML semántico (<header><main><section><footer>), contraste AA, alt en imágenes, aria donde aplique.
 - JS vanilla, mínimo y SIN errores de consola. Sin frameworks. Única dependencia externa permitida: Google Fonts + Unsplash.
 
-CALIDAD ALTA pero EFICIENTE: 5-6 secciones potentes (hero, servicios, prueba social/testimonios, galería con
-las imágenes reales, precios/proceso o CTA, footer). CSS limpio y compacto (sin repetir). Usa las imágenes
-provistas. CRÍTICO: entrega el HTML COMPLETO de principio a fin, sin cortarte; apunta a ~30-45 KB como máximo.
+CALIDAD ALTA pero EFICIENTE: 5 secciones potentes (hero, servicios, prueba social/testimonios, galería con las
+imágenes reales, CTA + footer). CSS limpio y COMPACTO (sin repetir reglas). Usa las imágenes provistas.
+CRÍTICO: entrega el HTML COMPLETO de principio a fin sin cortarte; tamaño objetivo ~20-30 KB (NO te excedas).
 
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       model: "claude-sonnet-4-6",
       input: `Construye el proyecto según este PROJECT.md:\n\n${projectMd || prompt}${imagesBlock}`,
       schema: SCHEMAS.build,
-      maxTokens: 13000,
+      maxTokens: 16000,
     },
     review: {
       system: REVIEW_SYSTEM,

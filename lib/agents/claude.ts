@@ -173,6 +173,14 @@ function extractJson<T>(content: Array<{ type: string; text?: string }>): T {
   try {
     return JSON.parse(text) as T;
   } catch {
+    // Recuperación: si la respuesta trae HTML grande que se cortó, rescata el campo "html".
+    const m = text.match(/"html"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    if (m) {
+      try {
+        const html = JSON.parse('"' + m[1].replace(/\\+$/, "") + '"');
+        if (typeof html === "string" && html.length > 200) return { html, summary: "" } as unknown as T;
+      } catch { /* sigue al error */ }
+    }
     throw new Error(`Respuesta del agente no es JSON válido: ${text.slice(0, 200)}`);
   }
 }
