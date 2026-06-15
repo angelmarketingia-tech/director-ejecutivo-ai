@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useDeck } from "@/lib/store";
 import { AREA_BY_ID } from "@/lib/departments";
-import { Pencil, Check } from "lucide-react";
+import { drawAvatar, resolveLook, type Look } from "@/lib/avatar";
+import { CharacterEditor } from "@/components/office/CharacterEditor";
+import { Sparkles } from "lucide-react";
 
 /**
  * Oficina PIXEL-ART de lujo (canvas). Salas divididas por área, ventanal panorámico tipo
@@ -13,10 +15,6 @@ import { Pencil, Check } from "lucide-react";
 type Worker = { id: string; name: string; color: string; task: string; working: boolean };
 type Room = { area: string; label: string; color: string; workers: Worker[] };
 
-const HAIR = ["#2b2017", "#6b4b2a", "#141414", "#caa14a", "#7a3b1f", "#23233a", "#8a8f9c"];
-const SKIN = ["#f1c9a0", "#e0a878", "#c68642", "#8d5524", "#ffd9b3"];
-const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
-
 export function PixelOffice() {
   const ref = useRef<HTMLCanvasElement>(null);
   const setArea = useDeck((s) => s.setArea);
@@ -24,28 +22,27 @@ export function PixelOffice() {
   const areaAgents = useDeck((s) => s.areaAgents);
   const agentEnabled = useDeck((s) => s.agentEnabled);
 
-  const [names, setNames] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState(false);
   const [team, setTeam] = useState<any[]>([]);
+  const [looks, setLooks] = useState<Record<string, Look>>({});
+  const [role, setRole] = useState("member");
+  const looksRef = useRef<Record<string, Look>>({});
+  useEffect(() => { looksRef.current = looks; }, [looks]);
   useEffect(() => {
-    try { setNames(JSON.parse(localStorage.getItem("agentNames") || "{}")); } catch {}
-    const load = () => fetch("/api/team").then((r) => r.json()).then((j) => { if (j.ok) setTeam(j.team); }).catch(() => {});
-    load();
-    const id = setInterval(load, 15000); // refleja en vivo lo que el equipo registra
+    const loadTeam = () => fetch("/api/team").then((r) => r.json()).then((j) => { if (j.ok) setTeam(j.team); }).catch(() => {});
+    loadTeam();
+    fetch("/api/appearance").then((r) => r.json()).then((j) => { if (j.ok) { setLooks(j.looks || {}); setRole(j.role); } }).catch(() => {});
+    const id = setInterval(loadTeam, 15000);
     return () => clearInterval(id);
   }, []);
-  function rename(id: string, v: string) {
-    const next = { ...names, [id]: v };
-    setNames(next);
-    try { localStorage.setItem("agentNames", JSON.stringify(next)); } catch {}
-  }
-  const nm = (id: string, def: string) => (names[id]?.trim() ? names[id] : def);
+  const nm = (id: string, def: string) => (looks[id]?.name?.trim() ? (looks[id].name as string) : def);
 
-  // Lista editable
+  // Lista de personajes editables (agentes + ATLAS + equipo Daptux)
   const editList = [
-    ...agents.filter((a) => a.id !== "director").map((a) => ({ id: a.id, def: a.name })),
-    ...agents.filter((a) => a.id === "director").map((a) => ({ id: a.id, def: a.name })),
-    ...(["marketing", "ingenieria", "directiva", "rrhh"] as const).flatMap((ar) => (areaAgents[ar] ?? []).map((a) => ({ id: a.id, def: a.name }))),
+    ...agents.filter((a) => a.id !== "director").map((a) => ({ id: a.id, def: a.name, color: a.color })),
+    ...agents.filter((a) => a.id === "director").map((a) => ({ id: a.id, def: a.name, color: "#E8C766" })),
+    ...(["marketing", "ingenieria", "directiva", "rrhh"] as const).flatMap((ar) => (areaAgents[ar] ?? []).map((a) => ({ id: a.id, def: a.name, color: a.color }))),
+    ...(["angel", "david", "andres", "juan"] as const).map((id) => ({ id, def: team.find((t) => t.id === id)?.name ?? id, color: id === "angel" || id === "david" ? "#E8C766" : "#22D3EE" })),
   ];
 
   type Daptux = { id: string; name: string; role: string; task: string; startedAt: number | null; color: string };
@@ -70,7 +67,7 @@ export function PixelOffice() {
         return { id, name: m?.name ?? id, role: m?.role ?? (id === "angel" || id === "david" ? "CEO · Dirección" : "Programador creativo"), task: m?.current?.task ?? "", startedAt: m?.current?.startedAt ?? null, color };
       }),
     };
-  }, [agents, areaAgents, agentEnabled, names, team]);
+  }, [agents, areaAgents, agentEnabled, looks, team]);
 
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return;
@@ -144,16 +141,8 @@ export function PixelOffice() {
     }
 
     function character(cx: number, py: number, w: Worker, idx: number) {
-      const h = hash(w.id || w.name);
-      const skin = SKIN[h % SKIN.length], hair = HAIR[(h >> 3) % HAIR.length], glasses = (h % 3) === 0;
       const bob = reduce ? 0 : Math.round(Math.sin(frame / 22 + idx) * 1.3);
-      const y = py + bob;
-      R(cx - 14, y + 17, 28, 16, w.color);            // hombros (camisa = color del agente)
-      R(cx - 12, y + 2, 24, 18, hair);                 // cabeza (atrás, pelo)
-      R(cx - 11, y + 13, 22, 5, skin);                 // cuello/nuca
-      R(cx - 14, y + 5, 4, 12, "#15202f"); R(cx + 10, y + 5, 4, 12, "#15202f"); // earcups
-      R(cx - 12, y, 24, 4, "#15202f");                 // banda headset
-      if (glasses) { R(cx - 10, y + 12, 8, 1, "#cfe0ff"); R(cx + 2, y + 12, 8, 1, "#cfe0ff"); }
+      drawAvatar(c2d, cx, py + bob, resolveLook(w.id, looksRef.current[w.id]), w.color, 1);
       return { bob };
     }
 
@@ -331,31 +320,25 @@ export function PixelOffice() {
       <div className="mb-1.5 flex items-center gap-2 px-1">
         <span className="h-2 w-2 animate-pulse rounded-full bg-ok" />
         <p className="text-[13px] font-semibold text-text">Oficina en vivo · penthouse</p>
-        <button onClick={() => setEditing((v) => !v)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-muted hover:text-text">
-          {editing ? <Check className="h-3.5 w-3.5 text-ok" /> : <Pencil className="h-3.5 w-3.5" />}
-          {editing ? "Listo" : "Editar nombres"}
-        </button>
+        {role === "admin" && (
+          <button onClick={() => setEditing(true)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-prospect/30 bg-prospect/10 px-2.5 py-1 text-[11px] font-semibold text-prospect hover:bg-prospect/20">
+            <Sparkles className="h-3.5 w-3.5" /> Personalizar (PRO)
+          </button>
+        )}
       </div>
-
-      {editing && (
-        <div className="mb-2 grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface/60 p-3 sm:grid-cols-3">
-          {editList.map((a) => (
-            <div key={a.id} className="flex flex-col gap-0.5">
-              <span className="text-[9px] uppercase tracking-wide text-text-dim">{a.def}</span>
-              <input
-                value={names[a.id] ?? ""}
-                onChange={(e) => rename(a.id, e.target.value)}
-                placeholder={a.def}
-                className="rounded-md border border-border bg-bg-soft px-2 py-1 text-[11px] text-text outline-none focus:border-prospect/50"
-              />
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="overflow-hidden rounded-xl">
         <canvas ref={ref} className="block w-full" />
       </div>
+
+      {editing && (
+        <CharacterEditor
+          characters={editList}
+          looks={looks}
+          onClose={() => setEditing(false)}
+          onChange={(id, look) => setLooks((p) => ({ ...p, [id]: { ...p[id], ...look } }))}
+        />
+      )}
     </div>
   );
 }
