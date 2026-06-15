@@ -90,6 +90,16 @@ export interface Lead {
     preparedAt: number;
     sentAt?: number;
   };
+  /** Investigación con IA guardada (para no repetirla). */
+  research?: {
+    digitalScore?: number;
+    strengths?: string[];
+    gaps?: string[];
+    needs?: string[];
+    hook?: string;
+    competitorNote?: string;
+    at: number;
+  };
 }
 
 export type ChannelType = "email" | "whatsapp" | "call";

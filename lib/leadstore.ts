@@ -65,6 +65,7 @@ export interface LeadState {
   consent?: string;
   needs?: string[];
   outreach?: unknown;
+  research?: unknown;
   updatedAt: number;
 }
 

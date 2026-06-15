@@ -67,7 +67,8 @@ export async function POST(req: Request) {
   try {
     // ORACLE investiga + FORGE califica + QUILL redacta (Claude real), gasto atribuido al usuario.
     const { researchData, scoring, email } = await withSpend(req, `pipeline:${lead.company}`, async () => {
-      const r = await research(lead);
+      // Reutiliza la investigación previa si ya existe (no la repite).
+      const r = lead.research?.hook ? { data: lead.research } : await research(lead);
       const sc = await score({ lead, research: r.data, service: SERVICE });
       const em = await writeEmail({ lead, research: r.data, service: SERVICE, seller: SELLER });
       return {

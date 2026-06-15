@@ -145,6 +145,8 @@ interface DeckState {
   markContacted: (id: string) => void;
   /** Mueves manualmente un lead a una etapa real (interesado/reunión/ganado/perdido). */
   advanceLead: (id: string, stage: PipelineStage) => void;
+  /** Guarda la investigación con IA de un lead (para no repetirla) y la sincroniza. */
+  setLeadResearch: (id: string, research: NonNullable<Lead["research"]>) => void;
   /** Marca un lead para revisión/cierre humano. */
   escalateLead: (id: string) => void;
 }
@@ -274,6 +276,7 @@ function syncStatesToServer(leads: Lead[]) {
     consent: l.consent,
     needs: l.needs,
     outreach: l.outreach,
+    research: l.research,
     updatedAt: Date.now(),
   }));
   fetch("/api/leads/state", {
@@ -318,6 +321,7 @@ function applyAIResult(set: any, _get: any, id: string, j: any) {
     const msg = j.message ?? {};
     if (typeof r.digitalScore === "number") lead.digitalScore = r.digitalScore;
     if (Array.isArray(r.needs) && r.needs.length) lead.needs = r.needs;
+    if (r && (r.hook || r.gaps)) lead.research = { ...r, at: Date.now() }; // guarda para no repetir
     if (typeof sc.score === "number") lead.score = sc.score;
     if (sc.temperature) lead.temperature = sc.temperature;
     if (typeof sc.closeProbability === "number") lead.closeProbability = sc.closeProbability;
@@ -875,6 +879,7 @@ export const useDeck = create<DeckState>()(
                 consent: (st.consent as Lead["consent"]) ?? l.consent,
                 needs: Array.isArray(st.needs) ? st.needs : l.needs,
                 outreach: (st.outreach as Lead["outreach"]) ?? l.outreach,
+                research: (st.research as Lead["research"]) ?? l.research,
               };
             });
             return {
@@ -1097,6 +1102,21 @@ export const useDeck = create<DeckState>()(
         ].slice(0, 80),
         metrics: recomputeMetrics({ leads, emails: s.emails, whatsapp: s.whatsapp, calls: s.calls }),
       };
+    });
+    const updated = get().leads.find((l) => l.id === id);
+    if (updated) syncStatesToServer([updated]);
+  },
+
+  setLeadResearch: (id, research) => {
+    set((s) => {
+      const idx = s.leads.findIndex((l) => l.id === id);
+      if (idx < 0) return {} as Partial<DeckState>;
+      const lead = { ...s.leads[idx], research };
+      if (typeof research.digitalScore === "number") lead.digitalScore = research.digitalScore;
+      if (Array.isArray(research.needs) && research.needs.length) lead.needs = research.needs;
+      const leads = [...s.leads];
+      leads[idx] = lead;
+      return { leads };
     });
     const updated = get().leads.find((l) => l.id === id);
     if (updated) syncStatesToServer([updated]);

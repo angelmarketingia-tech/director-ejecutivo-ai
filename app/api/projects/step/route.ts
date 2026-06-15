@@ -51,9 +51,9 @@ ESTÁNDARES OBLIGATORIOS DE NIVEL SENIOR:
 - Accesibilidad: HTML semántico (<header><main><section><footer>), contraste AA, alt en imágenes, aria donde aplique.
 - JS vanilla, mínimo y SIN errores de consola. Sin frameworks. Única dependencia externa permitida: Google Fonts + Unsplash.
 
-CALIDAD MÁXIMA: 5-7 secciones potentes y bien diseñadas (hero, características/servicios, prueba social/
-testimonios, galería con las imágenes reales, precios o proceso, CTA final, footer completo). CSS limpio y
-organizado. Usa TODAS las imágenes provistas. Es OBLIGATORIO entregar el HTML COMPLETO de principio a fin.
+CALIDAD ALTA pero EFICIENTE: 5-6 secciones potentes (hero, servicios, prueba social/testimonios, galería con
+las imágenes reales, precios/proceso o CTA, footer). CSS limpio y compacto (sin repetir). Usa las imágenes
+provistas. CRÍTICO: entrega el HTML COMPLETO de principio a fin, sin cortarte; apunta a ~30-45 KB como máximo.
 
 Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio senior. Copy real (no lorem),
 español de Colombia. Devuelve { html, summary }.`;
@@ -115,8 +115,8 @@ export async function POST(req: Request) {
   // Límite de fotos para mantener la página ágil y caber en los 60s del plan Hobby.
   let imagesBlock = "";
   if (phase === "build") {
-    const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 6);
-    const imgs = queries.length ? await searchImagesMulti(queries, 2) : [];
+    const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 5);
+    const imgs = queries.length ? await searchImagesMulti(queries, 1) : [];
     imagesBlock = imgs.length
       ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales) ---\n` +
         imgs.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       model: "claude-sonnet-4-6",
       input: `Construye el proyecto según este PROJECT.md:\n\n${projectMd || prompt}${imagesBlock}`,
       schema: SCHEMAS.build,
-      maxTokens: 16000,
+      maxTokens: 13000,
     },
     review: {
       system: REVIEW_SYSTEM,

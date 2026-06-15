@@ -26,6 +26,8 @@ import {
   CheckCircle2,
   XCircle,
   Zap,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface ResearchData {
@@ -46,9 +48,19 @@ export function LeadDrawer() {
   const markContacted = useDeck((s) => s.markContacted);
   const advanceLead = useDeck((s) => s.advanceLead);
   const runAIPipelineLead = useDeck((s) => s.runAIPipelineLead);
+  const setLeadResearch = useDeck((s) => s.setLeadResearch);
   const ai = useDeck((s) => s.aiPipeline);
+  // Lista navegable (mismo orden que la vista de Leads: por score)
+  const navList = useDeck((s) => [...s.leads].sort((a, b) => b.score - a.score).map((l) => l.id));
   const done = lead && (lead.stage === "won" || lead.stage === "lost");
   useEscape(!!lead, () => close(null));
+
+  function go(dir: 1 | -1) {
+    if (!id) return;
+    const i = navList.indexOf(id);
+    const next = navList[i + dir];
+    if (next) close(next); // selectLead(next)
+  }
 
   const [researching, setResearching] = useState(false);
   const [research, setResearch] = useState<ResearchData | null>(null);
@@ -66,12 +78,13 @@ export function LeadDrawer() {
     }
   }
 
-  // Reinicia la investigación al cambiar de lead
+  // Al cambiar de lead: muestra su investigación guardada (si existe) y limpia el resto.
   useEffect(() => {
-    setResearch(null);
+    setResearch((lead?.research as ResearchData) ?? null);
     setResearchMsg(null);
     setResearching(false);
     setCopied(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function investigate() {
@@ -97,7 +110,7 @@ export function LeadDrawer() {
         }),
       });
       const j = await r.json();
-      if (j.ok) setResearch(j.data as ResearchData);
+      if (j.ok) { setResearch(j.data as ResearchData); setLeadResearch(lead.id, { ...(j.data as ResearchData), at: Date.now() }); }
       else if (j.noKey) setResearchMsg("Falta ANTHROPIC_API_KEY para investigar con IA.");
       else if (j.budgetExceeded) setResearchMsg("Tope de gasto diario alcanzado.");
       else setResearchMsg(j.error ?? "No se pudo investigar.");
@@ -147,12 +160,20 @@ export function LeadDrawer() {
                 </h3>
                 <p className="text-[12px] text-text-muted">{lead.category}</p>
               </div>
-              <button
-                onClick={() => close(null)}
-                className="grid h-8 w-8 place-items-center rounded-lg border border-border text-text-muted hover:text-text"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => go(-1)} title="Lead anterior" className="grid h-8 w-8 place-items-center rounded-lg border border-border text-text-muted hover:text-text">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button onClick={() => go(1)} title="Siguiente lead" className="grid h-8 w-8 place-items-center rounded-lg border border-border text-text-muted hover:text-text">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => close(null)}
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-border text-text-muted hover:text-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5">
