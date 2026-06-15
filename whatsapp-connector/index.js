@@ -71,8 +71,27 @@ const client = new Client({
 
 client.on("qr", (qr) => { console.log("\n📲 Escanea con WhatsApp Business → Ajustes → Dispositivos vinculados:\n"); qrcode.generate(qr, { small: true }); });
 client.on("authenticated", () => console.log("🔐 Autenticado."));
-client.on("ready", () => console.log("✅ Conectado (modo seguro anti-baneo). Deja esta ventana abierta."));
 client.on("disconnected", (r) => console.log("🔌 Desconectado:", r));
+
+// Sincroniza los chats existentes para verlos en la bandeja (como WhatsApp Web).
+async function syncChats() {
+  try {
+    const chats = await client.getChats();
+    const items = [];
+    for (const ch of chats.filter((c) => !c.isGroup).slice(0, 30)) {
+      const id = (ch.id?._serialized || "").replace("@c.us", "");
+      if (!id) continue;
+      const last = ch.lastMessage;
+      items.push({ id, name: ch.name || undefined, text: (last && last.body) || "(conversación)", fromMe: !!(last && last.fromMe), at: last ? last.timestamp * 1000 : Date.now() });
+    }
+    if (items.length) { await fetch(APP + "/api/whatsapp/sync", { method: "POST", headers, body: JSON.stringify({ chats: items }) }); console.log("📒 Chats sincronizados:", items.length); }
+  } catch (e) { console.error("sync error:", e.message); }
+}
+client.on("ready", async () => {
+  console.log("✅ Conectado (modo seguro anti-baneo). Deja esta ventana abierta.");
+  await syncChats();
+  setInterval(syncChats, 60000);
+});
 
 // Entrantes → app → (si bot activo) respuesta humana-realista
 client.on("message", async (msg) => {

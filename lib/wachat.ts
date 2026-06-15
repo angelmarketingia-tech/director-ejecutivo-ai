@@ -76,6 +76,22 @@ export async function addInbound(id: string, name: string | undefined, text: str
   return c;
 }
 
+/** Sincroniza chats existentes de WhatsApp (al conectar) para verlos en la bandeja. */
+export async function syncChats(items: { id: string; name?: string; text: string; fromMe?: boolean; at?: number }[]): Promise<void> {
+  const chats = await readAll();
+  for (const it of items) {
+    if (!it.id) continue;
+    const c = findOrCreate(chats, it.id, it.name);
+    const last = c.messages[c.messages.length - 1];
+    if (it.text && (!last || last.text !== it.text)) {
+      c.messages.push({ id: mid(), dir: it.fromMe ? "out" : "in", by: it.fromMe ? "human" : "client", text: it.text, at: it.at || Date.now(), status: "sent" });
+    }
+    c.lastAt = it.at || c.lastAt;
+    c.messages = c.messages.slice(-MAX_MSGS);
+  }
+  await writeAll(chats);
+}
+
 /** Respuesta del bot (ya enviada por el conector). */
 export async function addBotReply(id: string, text: string): Promise<void> {
   const chats = await readAll();
