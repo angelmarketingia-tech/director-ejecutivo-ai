@@ -3,6 +3,7 @@ import { runRaw, type ClaudeModel } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { searchImagesMulti, imagesEnabled } from "@/lib/integrations/images";
+import { higgsfieldHeroFor } from "@/lib/integrations/higgsfield";
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
@@ -115,11 +116,14 @@ export async function POST(req: Request) {
   // Límite de fotos para mantener la página ágil y caber en los 60s del plan Hobby.
   let imagesBlock = "";
   if (phase === "build") {
+    // Hero premium curado de Higgsfield según el rubro (si hay match) + fotos de stock (Pexels) para galería.
+    const hero = higgsfieldHeroFor(prompt || projectMd);
     const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 5);
-    const imgs = queries.length ? await searchImagesMulti(queries, 1) : [];
-    imagesBlock = imgs.length
-      ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales) ---\n` +
-        imgs.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
+    const stock = queries.length ? await searchImagesMulti(queries, 1) : [];
+    const all = [...hero, ...stock.filter((s) => !hero.some((h) => h.url === s.url))];
+    imagesBlock = all.length
+      ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales; la #1 es un HERO premium, úsala a pantalla completa en el hero con overlay) ---\n` +
+        all.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
       : `\n\n(NO hay imágenes provistas: usa visuales premium por CSS — gradientes/mesh/SVG — y NO uses <img> externas.)`;
   }
 

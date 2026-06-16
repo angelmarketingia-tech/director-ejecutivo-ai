@@ -3,6 +3,8 @@ import { runRaw } from "@/lib/agents/claude";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { withSpend } from "@/lib/spendlog";
+import { searchImagesMulti } from "@/lib/integrations/images";
+import { higgsfieldHeroFor } from "@/lib/integrations/higgsfield";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel Pro
@@ -17,21 +19,33 @@ const SCHEMA = {
   required: ["html", "summary"],
 } as const;
 
-const SYSTEM = `Eres un diseñador y desarrollador web senior. Generas sitios web de UNA sola página,
-modernos, responsivos y listos para mostrar a un cliente como DEMO de venta.
+const SYSTEM = `Eres un INGENIERO FRONT-END SENIOR y diseñador de producto de clase mundial (nivel agencia
+premium / calidad Awwwards). Generas un sitio web DEMO de UNA sola página, en UN archivo HTML
+autónomo, con acabado PROFESIONAL ALTO para enamorar a un cliente. Nada genérico ni "básico".
 
-REGLAS DEL ENTREGABLE (campo "html"):
-- Un único documento HTML completo y autónomo (un solo archivo), empezando por <!DOCTYPE html>.
-- TODO el CSS dentro de una etiqueta <style> en el <head>. Sin frameworks ni dependencias externas de CSS/JS.
-- Diseño atractivo, profesional y moderno (buena tipografía del sistema, espaciado, colores coherentes con el rubro).
-- Totalmente responsivo (se ve bien en celular).
-- Secciones: barra de navegación fija, hero con el NOMBRE del negocio + propuesta + botón CTA,
-  servicios/menú (tarjetas), galería (usa imágenes de https://images.unsplash.com relevantes al rubro),
-  "sobre nosotros", ubicación con un iframe de Google Maps usando la URL
-  https://www.google.com/maps?q=NOMBRE+CIUDAD&output=embed, y pie de página.
-- Botón flotante de WhatsApp si se proporciona teléfono (enlace https://wa.me/<solo-digitos>).
-- Español de Colombia, tono cálido y comercial. Contenido plausible y específico del negocio (no "lorem ipsum").
-- Es una DEMO: el contenido puede ser de ejemplo pero realista.`;
+ESTÁNDARES OBLIGATORIOS:
+- Tipografía premium: carga Google Fonts en el <head> con un pairing de alto nivel (display "Sora"/
+  "Fraunces"/"Space Grotesk" + texto "Inter"/"Plus Jakarta Sans"). Escala fluida con clamp().
+- Sistema de diseño con CSS custom properties en :root (colores del rubro, espaciado, radios, sombras).
+  Paleta cohesiva moderna con 1 acento fuerte y gradientes/mesh sutiles.
+- Layout con Grid/Flex, mucho aire, ritmo vertical consistente, contenedores con max-width.
+- HERO impactante a pantalla: usa la imagen HERO provista (#1) como fondo con overlay/gradiente para
+  legibilidad, titular grande con clamp(), subtítulo, y CTA con estados.
+- Micro-interacciones (hover con brillo/elevación, :focus-visible) y animaciones de entrada al hacer
+  scroll con IntersectionObserver (fade + translate sutiles, performantes).
+- Navbar fija con cambio al hacer scroll, ICONOS como SVG inline.
+- Imágenes: usa EXCLUSIVAMENTE las URLs reales provistas en "IMÁGENES DISPONIBLES" (NO inventes URLs;
+  las inventadas se rompen). loading="lazy", object-fit: cover, alt descriptivo. La #1 es el HERO.
+  Si NO se provee ninguna, NO uses <img> externas: crea visuales premium con CSS (gradientes/mesh/SVG).
+- Responsivo impecable mobile-first, SIN scroll horizontal. Accesibilidad: HTML semántico, contraste AA.
+- JS vanilla mínimo y SIN errores de consola. Única dependencia externa: Google Fonts + las imágenes provistas.
+
+SECCIONES (5 potentes): navbar fija → hero con NOMBRE del negocio + propuesta + CTA → servicios/menú
+(tarjetas) → galería con las imágenes reales → prueba social/sobre nosotros → ubicación con iframe de
+Google Maps (https://www.google.com/maps?q=NOMBRE+CIUDAD&output=embed) + CTA final + footer.
+Botón flotante de WhatsApp si hay teléfono (https://wa.me/<solo-digitos>).
+Español de Colombia, tono cálido y comercial, copy REAL y específico del negocio (no lorem).
+CRÍTICO: entrega el HTML COMPLETO de principio a fin sin cortarte; CSS compacto; ~20-30 KB. Devuelve { html, summary }.`;
 
 /**
  * POST /api/projects/website — genera un sitio web real (HTML autónomo) para un negocio.
@@ -53,9 +67,20 @@ export async function POST(req: Request) {
   const phone = vstr(data?.phone, 40) ?? "";
   const notes = vstr(data?.notes, 600) ?? "";
 
+  // Imágenes REALES: hero premium curado de Higgsfield (por rubro) + fotos de stock (Pexels) para galería.
+  const hero = higgsfieldHeroFor(category);
+  const stockQueries = [category, `${category} ${city}`.trim(), name].filter(Boolean);
+  const stock = await searchImagesMulti(stockQueries, 1);
+  const images = [...hero, ...stock.filter((s) => !hero.some((h) => h.url === s.url))].slice(0, 6);
+  const imagesBlock = images.length
+    ? `\n\n--- IMÁGENES DISPONIBLES (usa SOLO estas URLs reales; la #1 es el HERO premium, úsala a pantalla completa con overlay) ---\n` +
+      images.map((i, n) => `${n + 1}. ${i.url}  (alt: ${i.alt})`).join("\n")
+    : `\n\n(NO hay imágenes provistas: usa visuales premium por CSS — gradientes/mesh/SVG — y NO uses <img> externas para no romper la página.)`;
+
   const input =
     `Genera el sitio web DEMO de este negocio:\n` +
-    JSON.stringify({ nombre: name, rubro: category, ciudad: city, telefono: phone, notas: notes }, null, 2);
+    JSON.stringify({ nombre: name, rubro: category, ciudad: city, telefono: phone, notas: notes }, null, 2) +
+    imagesBlock;
 
   try {
     const res = await withSpend(req, `web:${name}`, () =>
