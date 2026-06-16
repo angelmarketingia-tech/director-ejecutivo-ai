@@ -9,7 +9,8 @@ import { CheckInPanel } from "@/components/CheckInPanel";
 import { AgentTaskPanel } from "@/components/AgentTaskPanel";
 import { TeamDashboard } from "@/components/TeamDashboard";
 import { IS_DEMO } from "@/lib/demoFlag";
-import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket, Globe, Loader2, Download, ExternalLink, Copy, Check, FileText, Wrench, ListChecks, CheckCircle2 } from "lucide-react";
+import { useEffect } from "react";
+import { Code2, GitBranch, Sparkles, Users, GitPullRequest, Rocket, Globe, Loader2, Download, ExternalLink, Copy, Check, FileText, Wrench, ListChecks, CheckCircle2, History, Trash2, RefreshCw } from "lucide-react";
 
 type Phase = "idle" | "architect" | "build" | "review" | "done" | "error";
 
@@ -66,6 +67,16 @@ function ProjectBuilder() {
     if (r.ok && Array.isArray(r.notes)) setNotes(r.notes);
     setPhase("done");
     setMsg("✅ Proyecto construido y revisado. Vista previa abajo (tu localhost) · descarga los archivos.");
+
+    // Guardar en el historial (servidor/KV) para no perderlo al cerrar.
+    if (b.html) {
+      const name = prompt.trim().slice(0, 80) || "Proyecto";
+      fetch("/api/projects/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, kind: "proyecto", html: b.html, projectMd: a.projectMd, summary: (r.notes || []).slice(0, 3).join(" · ") }),
+      }).then(() => window.dispatchEvent(new Event("projects-changed"))).catch(() => {});
+    }
   }
 
   function downloadFile(content: string, filename: string, type: string) {
@@ -191,6 +202,7 @@ function WebsiteForge() {
   const [pubUrl, setPubUrl] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   async function publish() {
     if (!html) return;
@@ -198,7 +210,14 @@ function WebsiteForge() {
     try {
       const r = await fetch("/api/projects/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, html }) });
       const j = await r.json();
-      if (j.ok) setPubUrl(j.url); else setMsg(`⚠️ ${j.error ?? "no se pudo publicar"}`);
+      if (j.ok) {
+        setPubUrl(j.url);
+        // Guardar el link público en el historial del proyecto generado.
+        if (savedId) {
+          fetch("/api/projects/list", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "seturl", id: savedId, url: j.url }) })
+            .then(() => window.dispatchEvent(new Event("projects-changed"))).catch(() => {});
+        }
+      } else setMsg(`⚠️ ${j.error ?? "no se pudo publicar"}`);
     } catch (e: any) { setMsg(`⚠️ ${String(e?.message ?? e)}`); }
     setPublishing(false);
   }
@@ -226,6 +245,13 @@ function WebsiteForge() {
       if (j.ok) {
         setHtml(j.html);
         setMsg("✅ Sitio web generado. Vista previa abajo · descárgalo o ábrelo en pestaña nueva.");
+        // Guardar en el historial para no perderlo al cerrar.
+        setSavedId(null);
+        fetch("/api/projects/list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: `${name.trim()} — ${category}, ${city}`.slice(0, 80), kind: "web", html: j.html }),
+        }).then((res) => res.json()).then((sj) => { if (sj?.saved?.id) setSavedId(sj.saved.id); window.dispatchEvent(new Event("projects-changed")); }).catch(() => {});
       } else if (j.noKey) setMsg("⚠️ Falta ANTHROPIC_API_KEY en Vercel.");
       else if (j.budgetExceeded) setMsg("⛔ Tope de gasto diario alcanzado.");
       else setMsg(`Error: ${j.error ?? "desconocido"}`);
@@ -358,6 +384,118 @@ function WebsiteForge() {
   );
 }
 
+interface ProjMeta { id: string; name: string; kind: "web" | "proyecto"; at: number; url?: string; }
+
+/** Historial persistente de proyectos/webs generados (servidor/KV). Sobrevive recargas y se ve en todos los dispositivos. */
+function ProjectHistory() {
+  const [items, setItems] = useState<ProjMeta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [opening, setOpening] = useState<string | null>(null);
+  const [admin, setAdmin] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/projects/list");
+      const j = await r.json();
+      if (j.ok) setItems(j.projects || []);
+    } catch { /* sin red */ }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    fetch("/api/me").then((r) => r.json()).then((j) => setAdmin(j?.role === "admin")).catch(() => {});
+    const onChange = () => load();
+    window.addEventListener("projects-changed", onChange);
+    return () => window.removeEventListener("projects-changed", onChange);
+  }, []);
+
+  async function open(id: string) {
+    setOpening(id);
+    try {
+      const r = await fetch("/api/projects/list?id=" + encodeURIComponent(id));
+      const j = await r.json();
+      const html = j?.project?.html;
+      if (html) {
+        const w = window.open();
+        if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+      }
+    } catch { /* ignore */ }
+    setOpening(null);
+  }
+
+  async function download(id: string, name: string) {
+    const r = await fetch("/api/projects/list?id=" + encodeURIComponent(id));
+    const j = await r.json();
+    const html = j?.project?.html;
+    if (!html) return;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) || "proyecto"}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function remove(id: string) {
+    if (!confirm("¿Eliminar este proyecto del historial? No se puede deshacer.")) return;
+    const r = await fetch("/api/projects/list", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
+    const j = await r.json();
+    if (j.ok) setItems(j.projects || []);
+  }
+
+  return (
+    <div className="panel p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <History className="h-4 w-4 text-[#FBBF24]" />
+        <p className="text-[13px] font-semibold text-text">Historial de proyectos</p>
+        <span className="ml-auto rounded-md bg-[#FBBF2415] px-2 py-0.5 text-[10px] font-semibold text-[#FBBF24]">{items.length} guardados</span>
+        <button onClick={load} title="Actualizar" className="rounded-md border border-border bg-surface p-1 text-text-muted hover:text-text">
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {loading && items.length === 0 ? (
+        <p className="py-4 text-center text-[12px] text-text-dim">Cargando…</p>
+      ) : items.length === 0 ? (
+        <p className="py-4 text-center text-[12px] text-text-dim">Aún no hay proyectos. Los que construyas arriba aparecerán aquí automáticamente.</p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {items.map((p) => (
+            <div key={p.id} className="flex items-center gap-2 rounded-lg border border-border bg-bg-soft/50 px-3 py-2">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md" style={{ background: p.kind === "web" ? "#34D39915" : "#818CF815", color: p.kind === "web" ? "#34D399" : "#818CF8" }}>
+                {p.kind === "web" ? <Globe className="h-3.5 w-3.5" /> : <Code2 className="h-3.5 w-3.5" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] font-medium text-text">{p.name}</p>
+                <p className="text-[10px] text-text-dim">{new Date(p.at).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}{p.url ? " · publicado" : ""}</p>
+              </div>
+              {p.url && (
+                <a href={p.url} target="_blank" rel="noopener noreferrer" title="Link público" className="rounded-md border border-[#34D399]/40 bg-[#34D399]/10 p-1.5 text-[#34D399] hover:bg-[#34D399]/20">
+                  <Globe className="h-3.5 w-3.5" />
+                </a>
+              )}
+              <button onClick={() => open(p.id)} title="Abrir vista previa" className="rounded-md border border-border bg-surface p-1.5 text-text-muted hover:text-text">
+                {opening === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+              </button>
+              <button onClick={() => download(p.id, p.name)} title="Descargar .html" className="rounded-md border border-border bg-surface p-1.5 text-text-muted hover:text-text">
+                <Download className="h-3.5 w-3.5" />
+              </button>
+              {admin && (
+                <button onClick={() => remove(p.id)} title="Eliminar" className="rounded-md border border-border bg-surface p-1.5 text-text-dim hover:text-[#FB7185]">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const SPRINT = [
   { col: "Backlog", tint: "#8A97B8", items: ["Rate limiting API", "Migrar a Prisma 6", "Webhooks de Stripe"] },
   { col: "En curso", tint: "#22D3EE", items: ["Endpoint de pagos (BYTE)", "Refactor auth (NOVA)"] },
@@ -403,6 +541,7 @@ export function EngineeringView() {
         <div className="flex flex-col gap-4">
           <ProjectBuilder />
           <WebsiteForge />
+          <ProjectHistory />
           <div>
             <p className="label-eyebrow mb-2 px-1">Agentes autónomos · pulsa “Ejecutar” para correr una tarea con subagentes</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
