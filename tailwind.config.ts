@@ -9,16 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Command Deck palette — puente de mando nocturno
-        bg: "#060912",
-        "bg-soft": "#0A0F1E",
-        surface: "#0E1426",
-        "surface-2": "#131B32",
-        border: "rgba(148, 163, 184, 0.12)",
-        "border-strong": "rgba(148, 163, 184, 0.22)",
-        text: "#EAF0FF",
-        "text-muted": "#8A97B8",
-        "text-dim": "#5A678C",
+        // Neutros como variables CSS → soportan modo claro/oscuro (ver globals.css)
+        bg: "rgb(var(--c-bg) / <alpha-value>)",
+        "bg-soft": "rgb(var(--c-bg-soft) / <alpha-value>)",
+        surface: "rgb(var(--c-surface) / <alpha-value>)",
+        "surface-2": "rgb(var(--c-surface-2) / <alpha-value>)",
+        border: "var(--color-border)",
+        "border-strong": "var(--color-border-strong)",
+        text: "rgb(var(--c-text) / <alpha-value>)",
+        "text-muted": "rgb(var(--c-text-muted) / <alpha-value>)",
+        "text-dim": "rgb(var(--c-text-dim) / <alpha-value>)",
+        // Marca Daptux.IA (verde lima del logo)
+        brand: "rgb(var(--c-brand) / <alpha-value>)",
         // Núcleo del Director + firmas de agentes
         director: "#E8C766",
         prospect: "#22D3EE",

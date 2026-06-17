@@ -16,10 +16,14 @@ const mono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Director Comercial AI — Sala de Control",
+  title: "Daptux.IA — Centro de Mando Comercial",
   description:
-    "Sala de control comercial multiagente: un Director Comercial AI coordina 5 agentes autónomos para prospectar, investigar, contactar y cerrar ventas B2B.",
+    "Centro de mando comercial de Daptux.IA: agentes autónomos prospectan, investigan, contactan y cierran ventas B2B, y construyen sitios web de alta calidad.",
+  icons: { icon: "/daptux-logo.png" },
 };
+
+// Aplica el tema guardado ANTES de pintar (evita parpadeo claro/oscuro).
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.add('light');}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -27,7 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="es" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

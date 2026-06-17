@@ -30,7 +30,7 @@ async function assertClean(errors: string[]) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("NEXUS HQ").first()).toBeVisible();
+  await expect(page.getByText("Daptux").first()).toBeVisible();
 });
 
 test("UX · navegar las 6 áreas + subnav comercial sin errores", async ({ page }) => {

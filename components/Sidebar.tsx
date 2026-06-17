@@ -12,7 +12,6 @@ import {
   Crown,
   Code2,
   Users,
-  Radio,
   GitBranch,
   PhoneCall,
   MessageCircle,
@@ -51,13 +50,13 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="flex items-center gap-3 px-2 pb-6">
-        <div className="relative grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-director/30 to-prospect/20 ring-1 ring-director/40">
-          <Radio className="h-5 w-5 text-director" />
-          <span className="absolute inset-0 animate-pulse-ring rounded-xl ring-1 ring-director/40" />
+        <div className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl bg-surface ring-1 ring-brand/40">
+          <img src="/daptux-logo.png" alt="Daptux.IA" className="h-9 w-9 object-contain" />
+          <span className="absolute inset-0 animate-pulse-ring rounded-xl ring-1 ring-brand/40" />
         </div>
         <div className="leading-tight">
-          <p className="text-[13px] font-semibold tracking-tight text-text">NEXUS HQ</p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-director">
+          <p className="text-[13px] font-semibold tracking-tight text-text">Daptux<span className="text-brand">.IA</span></p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
             Centro de Mando
           </p>
         </div>

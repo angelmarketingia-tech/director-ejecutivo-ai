@@ -52,7 +52,7 @@ export function HQView() {
         <div className="pointer-events-none absolute inset-0 bg-radial-deck opacity-80" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="label-eyebrow">NEXUS · Centro de Mando Corporativo</p>
+            <p className="label-eyebrow">Daptux.IA · Centro de Mando Corporativo</p>
             <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-text">
               Toda la compañía operando en una sala
             </h2>

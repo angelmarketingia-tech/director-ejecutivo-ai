@@ -5,6 +5,7 @@ import { cn, fmtMoney } from "@/lib/utils";
 import { AREA_BY_ID } from "@/lib/departments";
 import { IS_DEMO } from "@/lib/demoFlag";
 import { SoundToggle } from "@/components/fx/SoundToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Play, Pause, RotateCcw, Gauge, Sparkles, Menu } from "lucide-react";
 
 const SPEEDS = [1, 2, 4];
@@ -99,6 +100,7 @@ export function Topbar() {
         </button>
 
         <SoundToggle />
+        <ThemeToggle />
 
         <button
           onClick={reset}

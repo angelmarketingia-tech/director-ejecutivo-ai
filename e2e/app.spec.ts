@@ -16,7 +16,7 @@ async function pauseAmbient(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("NEXUS HQ").first()).toBeVisible();
+  await expect(page.getByText("Daptux").first()).toBeVisible();
 });
 
 test("HQ lobby muestra las áreas", async ({ page }) => {

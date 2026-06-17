@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Radio, Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const [user, setUser] = useState("");
@@ -38,25 +39,30 @@ export default function LoginPage() {
       <div className="pointer-events-none fixed inset-0 bg-grid-faint bg-[size:48px_48px] opacity-[0.18]" />
       <div className="pointer-events-none fixed inset-0 bg-radial-deck" />
 
+      <div className="absolute right-4 top-4 z-20">
+        <ThemeToggle />
+      </div>
+
       <form
         onSubmit={submit}
-        className="panel relative z-10 w-full max-w-[380px] p-7 shadow-panel"
+        className="panel relative z-10 w-full max-w-[400px] p-8 shadow-panel"
       >
-        <div className="mb-6 flex items-center gap-3">
-          <div className="relative grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-director/30 to-prospect/20 ring-1 ring-director/40">
-            <Radio className="h-5 w-5 text-director" />
+        {/* Marca Daptux */}
+        <div className="mb-7 flex flex-col items-center text-center">
+          <div className="relative mb-3 grid h-20 w-20 place-items-center overflow-hidden rounded-2xl bg-surface ring-1 ring-brand/40 shadow-glow-soft">
+            <img src="/daptux-logo.png" alt="Daptux.IA" className="h-[72px] w-[72px] object-contain" />
           </div>
-          <div className="leading-tight">
-            <p className="glow-text text-[15px] font-semibold tracking-tight text-text">NEXUS HQ</p>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-director">
-              Centro de Mando
-            </p>
-          </div>
+          <p className="text-[20px] font-bold tracking-tight text-text">
+            Daptux<span className="text-brand">.IA</span>
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-brand">
+            Centro de Mando Comercial
+          </p>
         </div>
 
-        <h1 className="text-[18px] font-semibold text-text">Iniciar sesión</h1>
+        <h1 className="text-[17px] font-semibold text-text">Iniciar sesión</h1>
         <p className="mb-5 mt-1 text-[12px] text-text-dim">
-          Acceso restringido. Ingresa tus credenciales.
+          Acceso restringido al equipo. Ingresa tus credenciales.
         </p>
 
         <label className="label-eyebrow">Usuario</label>
@@ -65,7 +71,7 @@ export default function LoginPage() {
           value={user}
           onChange={(e) => setUser(e.target.value)}
           autoComplete="username"
-          className="mb-3 mt-1.5 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-[13px] text-text outline-none focus:border-prospect/50"
+          className="mb-3 mt-1.5 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-[13px] text-text outline-none transition-colors focus:border-brand/60"
         />
 
         <label className="label-eyebrow">Contraseña</label>
@@ -75,7 +81,7 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          className="mb-4 mt-1.5 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-[13px] text-text outline-none focus:border-prospect/50"
+          className="mb-4 mt-1.5 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-[13px] text-text outline-none transition-colors focus:border-brand/60"
         />
 
         {error && (
@@ -88,11 +94,15 @@ export default function LoginPage() {
           data-testid="login-submit"
           type="submit"
           disabled={loading || !user || !password}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-director/20 py-2.5 text-[13px] font-semibold text-director transition-colors hover:bg-director/30 disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand py-2.5 text-[13px] font-bold text-[#0c1108] transition-all hover:brightness-110 disabled:opacity-40"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
           {loading ? "Entrando…" : "Entrar"}
         </button>
+
+        <p className="mt-5 text-center text-[10px] text-text-dim">
+          Daptux.IA · Business Software &amp; AI
+        </p>
       </form>
     </main>
   );
