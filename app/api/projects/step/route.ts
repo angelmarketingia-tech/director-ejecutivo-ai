@@ -4,6 +4,7 @@ import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { searchImagesMulti, imagesEnabled } from "@/lib/integrations/images";
 import { higgsfieldHeroFor } from "@/lib/integrations/higgsfield";
+import { higgsfieldLiveEnabled, generateImageLive } from "@/lib/integrations/higgsfield-live";
 import { withSpend } from "@/lib/spendlog";
 
 export const runtime = "nodejs";
@@ -116,8 +117,12 @@ export async function POST(req: Request) {
   // Límite de fotos para mantener la página ágil y caber en los 60s del plan Hobby.
   let imagesBlock = "";
   if (phase === "build") {
-    // Hero premium curado de Higgsfield según el rubro (si hay match) + fotos de stock (Pexels) para galería.
-    const hero = higgsfieldHeroFor(prompt || projectMd);
+    // 1) Hero EN VIVO con Higgsfield (cuenta Daptux) generado a medida del proyecto.
+    // 2) Si no hay API, hero curado por rubro. 3) Stock (Pexels) para galería.
+    let hero = higgsfieldLiveEnabled()
+      ? [await generateImageLive(`Premium cinematic website hero for: ${prompt}. Professional editorial photography, ultra detailed, no text, no watermark.`, "16:9")].filter(Boolean) as { url: string; alt: string }[]
+      : [];
+    if (!hero.length) hero = higgsfieldHeroFor(prompt || projectMd);
     const queries = (imageQueries.length ? imageQueries : prompt ? [prompt] : []).slice(0, 5);
     const stock = queries.length ? await searchImagesMulti(queries, 1) : [];
     const all = [...hero, ...stock.filter((s) => !hero.some((h) => h.url === s.url))];
