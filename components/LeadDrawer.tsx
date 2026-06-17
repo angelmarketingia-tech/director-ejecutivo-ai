@@ -49,6 +49,7 @@ export function LeadDrawer() {
   const advanceLead = useDeck((s) => s.advanceLead);
   const runAIPipelineLead = useDeck((s) => s.runAIPipelineLead);
   const setLeadResearch = useDeck((s) => s.setLeadResearch);
+  const attachDemo = useDeck((s) => s.attachDemo);
   const ai = useDeck((s) => s.aiPipeline);
   // Lista navegable (mismo orden que la vista de Leads: por score)
   const navList = useDeck((s) => [...s.leads].sort((a, b) => b.score - a.score).map((l) => l.id));
@@ -66,6 +67,52 @@ export function LeadDrawer() {
   const [research, setResearch] = useState<ResearchData | null>(null);
   const [researchMsg, setResearchMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoMsg, setDemoMsg] = useState<string | null>(null);
+
+  // 1-CLIC CIERRE: genera el demo web (hero Higgsfield), lo publica, lo guarda en historial
+  // y mete el link en el mensaje de cierre listo para enviar por WhatsApp.
+  async function generateDemo() {
+    if (!lead) return;
+    setDemoBusy(true);
+    setDemoMsg("Generando demo de su web…");
+    try {
+      const r = await fetch("/api/projects/website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: lead.company, category: lead.category, city: lead.city, phone: lead.phone ?? "" }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        setDemoMsg(j.noKey ? "Falta ANTHROPIC_API_KEY en Vercel." : j.budgetExceeded ? "Tope de gasto diario alcanzado." : (j.error ?? "No se pudo generar el demo."));
+        setDemoBusy(false);
+        return;
+      }
+      setDemoMsg("Publicando link…");
+      const p = await fetch("/api/projects/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: lead.company, html: j.html }),
+      });
+      const pj = await p.json();
+      // Guarda en el historial de proyectos (no se pierde).
+      fetch("/api/projects/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `${lead.company} — ${lead.category}`.slice(0, 80), kind: "web", html: j.html }),
+      }).then(() => window.dispatchEvent(new Event("projects-changed"))).catch(() => {});
+
+      if (pj.ok && pj.url) {
+        attachDemo(lead.id, pj.url);
+        setDemoMsg("✅ Demo publicado y link agregado al mensaje. Pulsa “Abrir WhatsApp”.");
+      } else {
+        setDemoMsg("Demo generado, pero no se pudo publicar el link (revisa KV en Vercel).");
+      }
+    } catch (e: any) {
+      setDemoMsg(String(e?.message ?? e));
+    }
+    setDemoBusy(false);
+  }
 
   async function copyDraft() {
     if (!lead?.outreach) return;
@@ -84,6 +131,8 @@ export function LeadDrawer() {
     setResearchMsg(null);
     setResearching(false);
     setCopied(false);
+    setDemoMsg(null);
+    setDemoBusy(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -379,6 +428,28 @@ export function LeadDrawer() {
                   </>
                 )}
               </button>
+              <button
+                data-testid="btn-generate-demo"
+                disabled={demoBusy || !!done}
+                onClick={generateDemo}
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-brand py-2.5 text-[13px] font-bold text-[#0c1108] transition-all hover:brightness-110 disabled:opacity-40"
+              >
+                {demoBusy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Generando demo…
+                  </>
+                ) : (
+                  <>
+                    <Globe className="h-4 w-4" /> {lead.demoUrl ? "Regenerar demo + mensaje" : "1-clic: demo + mensaje de cierre"}
+                  </>
+                )}
+              </button>
+              {demoMsg && <p className="mb-2 text-[11px] text-text-muted">{demoMsg}</p>}
+              {lead.demoUrl && (
+                <a href={lead.demoUrl} target="_blank" rel="noopener noreferrer" className="mb-2 block truncate text-[11px] text-brand underline">
+                  {lead.demoUrl}
+                </a>
+              )}
               <button
                 data-testid="btn-run-pipeline"
                 disabled={!!done}

@@ -90,6 +90,8 @@ export interface Lead {
     preparedAt: number;
     sentAt?: number;
   };
+  /** Link público del demo de su web (generado en 1-clic; va dentro del mensaje de cierre). */
+  demoUrl?: string;
   /** Investigación con IA guardada (para no repetirla). */
   research?: {
     digitalScore?: number;

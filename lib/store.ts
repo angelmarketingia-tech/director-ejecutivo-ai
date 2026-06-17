@@ -147,6 +147,8 @@ interface DeckState {
   advanceLead: (id: string, stage: PipelineStage) => void;
   /** Guarda la investigación con IA de un lead (para no repetirla) y la sincroniza. */
   setLeadResearch: (id: string, research: NonNullable<Lead["research"]>) => void;
+  /** Adjunta el link del demo al lead y lo mete en el mensaje de cierre. */
+  attachDemo: (id: string, url: string) => void;
   /** Marca un lead para revisión/cierre humano. */
   escalateLead: (id: string) => void;
 }
@@ -1117,6 +1119,37 @@ export const useDeck = create<DeckState>()(
       const leads = [...s.leads];
       leads[idx] = lead;
       return { leads };
+    });
+    const updated = get().leads.find((l) => l.id === id);
+    if (updated) syncStatesToServer([updated]);
+  },
+
+  // Adjunta el link del demo al lead y lo inserta en el mensaje de cierre (listo para WhatsApp).
+  attachDemo: (id, url) => {
+    set((s) => {
+      const idx = s.leads.findIndex((l) => l.id === id);
+      if (idx < 0) return {} as Partial<DeckState>;
+      const lead = { ...s.leads[idx], demoUrl: url };
+      const first = lead.contactName?.split(" ")[0];
+      const base =
+        lead.outreach?.message ||
+        `Hola${first ? " " + first : ""} 👋 te escribo de Daptux.IA. Le hice una propuesta de página web a ${lead.company}.`;
+      // Inserta/actualiza la línea del demo sin duplicarla.
+      const cleaned = base.replace(/\n*👉 Mira el demo aquí:.*$/s, "").trim();
+      const message = `${cleaned}\n\n👉 Mira el demo aquí: ${url}`;
+      lead.outreach = {
+        channel: (lead.phone ? "whatsapp" : "email") as "whatsapp" | "email",
+        subject: lead.outreach?.subject,
+        message,
+        preparedAt: lead.outreach?.preparedAt ?? Date.now(),
+        sentAt: lead.outreach?.sentAt,
+      };
+      const leads = [...s.leads];
+      leads[idx] = lead;
+      return {
+        leads,
+        events: [evt("email", "success", `Demo listo para ${lead.company} · mensaje de cierre con link`), ...s.events].slice(0, 80),
+      };
     });
     const updated = get().leads.find((l) => l.id === id);
     if (updated) syncStatesToServer([updated]);
