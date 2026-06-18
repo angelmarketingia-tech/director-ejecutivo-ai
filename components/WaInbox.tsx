@@ -24,12 +24,20 @@ export function WaInbox() {
     return () => clearInterval(id);
   }, []);
 
-  // Auto-scroll SOLO dentro del contenedor de mensajes (nunca mueve la página).
-  // Se dispara al cambiar de chat o al llegar un mensaje nuevo, no en cada poll.
+  // Al CAMBIAR de chat: salta al fondo (último mensaje).
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [sel, msgCount]);
+  }, [sel]);
+
+  // Al llegar un mensaje NUEVO: baja solo si ya estabas cerca del fondo.
+  // Si subiste a leer historial, NO te interrumpe (puedes navegar libre).
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
+  }, [msgCount]);
 
   async function load() {
     try {
@@ -90,7 +98,7 @@ export function WaInbox() {
           </div>
 
           {/* Conversación */}
-          <div className={`flex flex-col ${current ? "" : "hidden md:flex"}`}>
+          <div className={`flex min-h-0 flex-col ${current ? "" : "hidden md:flex"}`}>
             {!current ? (
               <div className="grid flex-1 place-items-center text-[12px] text-text-dim">Elige una conversación</div>
             ) : (
@@ -110,7 +118,7 @@ export function WaInbox() {
                   </button>
                 </div>
 
-                <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto bg-bg/40 p-3">
+                <div ref={listRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-bg/40 p-3">
                   {current.messages.map((m) => (
                     <div key={m.id} className={`max-w-[80%] rounded-2xl px-3 py-2 text-[12px] leading-relaxed ${m.dir === "in" ? "self-start rounded-bl-sm bg-surface-2 text-text" : m.by === "bot" ? "ml-auto rounded-br-sm bg-email/15 text-text" : "ml-auto rounded-br-sm bg-prospect/20 text-text"}`}>
                       <p className="mb-0.5 text-[9px] uppercase tracking-wide text-text-dim">{m.dir === "in" ? "Cliente" : m.by === "bot" ? "Bot" : "Tú"}{m.status === "queued" ? " · enviando…" : ""}</p>
