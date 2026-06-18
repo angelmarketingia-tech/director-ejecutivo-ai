@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { research, score, writeEmail } from "@/lib/agents/workers";
+import { research, score, writeEmail, writeWhatsAppOpener } from "@/lib/agents/workers";
 import { sendEmail } from "@/lib/integrations/email";
+import { queueHuman } from "@/lib/wachat";
 import { isLive, DEMO_MODE } from "@/lib/integrations/config";
 import { BudgetExceededError, getBudget } from "@/lib/agents/budget";
 import { rateLimit, readJsonLimited, authorized, recipientAllowed } from "@/lib/security";
@@ -62,7 +63,9 @@ export async function POST(req: Request) {
 
   const lead = (data as any)?.lead;
   if (!lead?.company) return NextResponse.json({ ok: false, error: "Falta 'lead'" }, { status: 400 });
-  const doSend = (data as any)?.send !== false; // por defecto intenta enviar
+  const doSend = (data as any)?.send !== false; // por defecto intenta enviar (email)
+  const sendWhatsApp = (data as any)?.sendWhatsApp === true; // auto-envío del 1er WhatsApp (opt-in)
+  const channel: "whatsapp" | "email" = lead.phone ? "whatsapp" : "email";
 
   try {
     // ORACLE investiga + FORGE califica + QUILL redacta (Claude real), gasto atribuido al usuario.
@@ -70,6 +73,15 @@ export async function POST(req: Request) {
       // Reutiliza la investigación previa si ya existe (no la repite).
       const r = lead.research?.hook ? { data: lead.research } : await research(lead);
       const sc = await score({ lead, research: r.data, service: SERVICE });
+      // WhatsApp → opener corto de alto cierre (pide OK para demo gratis). Email → mensaje formal.
+      if (channel === "whatsapp") {
+        const op = await writeWhatsAppOpener({ lead, research: r.data });
+        return {
+          researchData: r.data,
+          scoring: sc.data,
+          email: { subject: undefined as string | undefined, body: fillPlaceholders(op.data.message, lead) },
+        };
+      }
       const em = await writeEmail({ lead, research: r.data, service: SERVICE, seller: SELLER });
       return {
         researchData: r.data,
@@ -81,17 +93,35 @@ export async function POST(req: Request) {
       };
     });
 
-    // 4) Contacto REAL: solo email si hay dirección + Resend configurado + dominio permitido.
     let sent = false;
     let sendNote: string | undefined;
-    if (doSend && lead.email && !DEMO_MODE && isLive("resend") && recipientAllowed(lead.email)) {
+
+    // 4a) Auto-envío del PRIMER WhatsApp vía el conector (ritmo humano anti-baneo).
+    //     Opt-in (sendWhatsApp). El conector lo recoge del outbox y lo manda.
+    if (sendWhatsApp && channel === "whatsapp" && lead.phone) {
+      const digits = lead.phone.replace(/[^\d]/g, "");
+      if (digits.length >= 10) {
+        try {
+          await queueHuman(digits, email.body);
+          sent = true;
+          sendNote = "Mensaje encolado: el conector lo enviará por WhatsApp con ritmo humano (anti-baneo). El bot seguirá la conversación.";
+        } catch {
+          sendNote = "No se pudo encolar el WhatsApp (revisa KV/conector).";
+        }
+      } else {
+        sendNote = "Teléfono inválido para WhatsApp.";
+      }
+    }
+
+    // 4b) Contacto REAL por email: solo si hay dirección + Resend configurado + dominio permitido.
+    if (!sent && doSend && lead.email && !DEMO_MODE && isLive("resend") && recipientAllowed(lead.email)) {
       try {
         const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.6;color:#111">${
           email.body.replace(/\n/g, "<br>")
         }<hr style="border:none;border-top:1px solid #eee;margin:16px 0"><p style="color:#888;font-size:12px">Si no deseas recibir más mensajes, responde BAJA.</p></div>`;
         const res = await sendEmail({
           to: lead.email,
-          subject: email.subject,
+          subject: email.subject || lead.company,
           html,
           unsubscribeUrl: "https://director-ejecutivo-ai.vercel.app/unsubscribe",
         });
@@ -99,10 +129,12 @@ export async function POST(req: Request) {
       } catch {
         sendNote = "No se pudo enviar el email (revisa Resend).";
       }
-    } else if (doSend && lead.email && !isLive("resend")) {
+    } else if (!sent && doSend && lead.email && !isLive("resend")) {
       sendNote = "Email listo. Configura RESEND_API_KEY + EMAIL_FROM para envío automático.";
-    } else if (!lead.email) {
-      sendNote = "Sin email: envía el mensaje por WhatsApp (botón en el lead).";
+    } else if (!sent && !lead.email && channel === "email") {
+      sendNote = "Sin email ni teléfono: usa los botones del lead para contactar.";
+    } else if (!sent && channel === "whatsapp") {
+      sendNote = "Mensaje de WhatsApp listo. Pulsa “Abrir WhatsApp” o activa el envío automático.";
     }
 
     return NextResponse.json({

@@ -8,7 +8,7 @@
  * simulación local.
  */
 import type { Lead } from "@/lib/types";
-import { runAgent } from "@/lib/agents/claude";
+import { runAgent, runRaw } from "@/lib/agents/claude";
 import {
   PROSPECT_SCHEMA,
   RESEARCH_SCHEMA,
@@ -155,6 +155,51 @@ export async function writeEmail(input: {
     // Vercel Pro: más esfuerzo y tokens → mensajes más persuasivos y completos.
     effort: "medium",
     maxTokens: 3500,
+  });
+}
+
+// ── QUILL (WhatsApp): primer mensaje en frío, corto y de alto cierre ──
+const WA_OPENER_SYSTEM = `Eres un closer experto en ventas por WhatsApp para una agencia de páginas web de
+VILLAVICENCIO (Meta, Colombia) llamada Daptux.IA. Escribes el PRIMER mensaje en frío a un negocio local.
+
+OBJETIVO: que el dueño RESPONDA. No vender de una; despertar curiosidad y bajar la fricción a cero.
+
+REGLAS DEL MENSAJE (campo "message"):
+- MUY corto: 2 a 4 frases, máximo ~360 caracteres. Tono cercano, llanero, humano (trato de "tú"). NADA de sonar a robot ni a plantilla.
+- Empieza personalizando con el negocio real (nombre + rubro/ciudad) para que vea que NO es masivo.
+- Toca UN dolor concreto y creíble según la investigación (ej.: "no apareces cuando te buscan en Google", "no tienes página y la gente confía menos / te buscan y no te encuentran", "tu competencia ya tiene web").
+- Genera intriga: insinúa que viste algo puntual que le está costando clientes, sin soltarlo todo.
+- ÁNGULO DE CIERRE (el más efectivo): ofrece armarle una DEMO FUNCIONAL de su página TOTALMENTE GRATIS si te da el OK. Pide autorización, no pidas plata.
+- Menciona sutil que son de Villavicencio (cercanía/confianza). NO incluyas links ni precios todavía.
+- Termina con UNA sola pregunta fácil de responder que invite al "sí" (ej.: "¿te la armo y te la muestro?").
+- 1 o 2 emojis máximo, naturales. Sin asuntos, sin firmas largas, sin corchetes ni placeholders.
+
+Devuelve { message }.`;
+
+const WA_OPENER_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: { message: { type: "string" } },
+  required: ["message"],
+} as const;
+
+export async function writeWhatsAppOpener(input: {
+  lead: Partial<Lead> & { company: string; contactName?: string };
+  research?: ResearchResult;
+}) {
+  const first = input.lead.contactName?.split(" ")[0];
+  const prompt =
+    `Escribe el primer mensaje de WhatsApp para este negocio.` +
+    (first ? ` Si suena natural, salúdalo por su nombre: ${first}.` : "") +
+    `\n` +
+    JSON.stringify({ lead: input.lead, research: input.research }, null, 2);
+  return runRaw<{ message: string }>({
+    system: WA_OPENER_SYSTEM,
+    model: "claude-sonnet-4-6",
+    input: prompt,
+    schema: WA_OPENER_SCHEMA as unknown as Record<string, unknown>,
+    effort: "medium",
+    maxTokens: 600,
   });
 }
 

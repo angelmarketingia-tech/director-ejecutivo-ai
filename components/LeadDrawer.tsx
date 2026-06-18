@@ -48,6 +48,7 @@ export function LeadDrawer() {
   const markContacted = useDeck((s) => s.markContacted);
   const advanceLead = useDeck((s) => s.advanceLead);
   const runAIPipelineLead = useDeck((s) => s.runAIPipelineLead);
+  const autoCloseLead = useDeck((s) => s.autoCloseLead);
   const setLeadResearch = useDeck((s) => s.setLeadResearch);
   const attachDemo = useDeck((s) => s.attachDemo);
   const ai = useDeck((s) => s.aiPipeline);
@@ -412,6 +413,25 @@ export function LeadDrawer() {
                   </>
                 )}
               </button>
+              {lead.phone && (
+                <button
+                  data-testid="btn-auto-close"
+                  disabled={!!done || ai.running}
+                  onClick={() => autoCloseLead(lead.id)}
+                  className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-brand py-2.5 text-[13px] font-bold text-[#0c1108] transition-all hover:brightness-110 disabled:opacity-40"
+                  title="Investiga, redacta el mensaje de cierre y lo ENVÍA por WhatsApp (el conector lo manda con ritmo anti-baneo). El bot sigue la conversación."
+                >
+                  {ai.running ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Ejecutando cierre…
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" /> Activar cierre automático (WhatsApp)
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 data-testid="btn-ai-pipeline-lead"
                 disabled={!!done || ai.running}

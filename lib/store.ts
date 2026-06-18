@@ -139,6 +139,8 @@ interface DeckState {
   runAIPipeline: () => Promise<void>;
   /** Ejecuta el pipeline con IA real sobre un solo lead. */
   runAIPipelineLead: (id: string) => Promise<void>;
+  /** Pipeline completo + auto-envío del 1er WhatsApp por el conector (anti-baneo). */
+  autoCloseLead: (id: string) => Promise<void>;
   /** Detiene el pipeline con IA en curso. */
   stopAIPipeline: () => void;
   /** Registras TÚ que ya enviaste el contacto (lo marcas como hecho de verdad). */
@@ -293,13 +295,14 @@ function syncStatesToServer(leads: Lead[]) {
 /** Llama al endpoint que ejecuta el pipeline con IA real sobre UN lead. */
 async function runAILead(
   lead: Lead,
-  apply: (j: any) => void
+  apply: (j: any) => void,
+  opts?: { sendWhatsApp?: boolean }
 ): Promise<{ stop?: boolean; note: string | null }> {
   try {
     const res = await fetch("/api/pipeline/lead", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lead }),
+      body: JSON.stringify({ lead, sendWhatsApp: opts?.sendWhatsApp === true }),
     });
     const j = await res.json();
     if (j.noKey) return { stop: true, note: "Falta ANTHROPIC_API_KEY en Vercel (Settings → Environment Variables)." };
@@ -643,6 +646,18 @@ export const useDeck = create<DeckState>()(
         note: res.note,
       },
     });
+    const updated = get().leads.find((l) => l.id === id);
+    if (updated) syncStatesToServer([updated]);
+  },
+
+  // Cierre automático: pipeline completo + ENVÍA el primer WhatsApp por el conector (anti-baneo).
+  // Luego el bot sigue la conversación; tú intervienes para rematar.
+  autoCloseLead: async (id) => {
+    const lead = get().leads.find((l) => l.id === id);
+    if (!lead) return;
+    set({ aiPipeline: { running: true, current: 0, total: 1, note: "Investigando, redactando y enviando por WhatsApp…" } });
+    const res = await runAILead(lead, (patch) => applyAIResult(set, get, id, patch), { sendWhatsApp: true });
+    set({ aiPipeline: { running: false, current: 1, total: 1, note: res.note } });
     const updated = get().leads.find((l) => l.id === id);
     if (updated) syncStatesToServer([updated]);
   },
