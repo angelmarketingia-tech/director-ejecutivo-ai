@@ -8,8 +8,6 @@ interface FAQ { q: string; a: string }
 interface KB { businessName: string; about: string; services: string; pricing: string; faqs: FAQ[]; tone: string; optOutWord: string; autoReplyEnabled: boolean; extraNotes?: string; }
 interface LogE { at: number; from: string; inbound: string; outbound: string; auto: boolean }
 
-const WEBHOOK_URL = "https://director-ejecutivo-ai.vercel.app/api/webhooks/whatsapp";
-
 export function WhatsAppBot() {
   const [kb, setKb] = useState<KB | null>(null);
   const [waLive, setWaLive] = useState(false);
@@ -82,7 +80,7 @@ export function WhatsAppBot() {
           <p className="text-[13px] font-semibold text-text">Asistente de WhatsApp · auto-respuesta</p>
           <span className={`ml-auto flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${waLive ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"}`}>
             {waLive ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            {waLive ? "WhatsApp conectado" : "WhatsApp NO conectado"}
+            {waLive ? "Conector conectado" : "Conector apagado"}
           </span>
         </div>
         <div className="flex items-center justify-between rounded-lg border border-border bg-surface/50 px-3 py-2.5">
@@ -100,7 +98,7 @@ export function WhatsAppBot() {
         </div>
         {!waLive && (
           <div className="mt-2 rounded-lg border border-border bg-surface/40 px-3 py-2 text-[11px] leading-relaxed text-text-dim">
-            Para que responda solo en WhatsApp real, configura en Vercel: <b>WHATSAPP_ACCESS_TOKEN</b>, <b>WHATSAPP_PHONE_NUMBER_ID</b>, <b>WHATSAPP_VERIFY_TOKEN</b> y <b>WHATSAPP_APP_SECRET</b>. Webhook (Meta): <span className="text-text-muted">{WEBHOOK_URL}</span>. Mientras tanto, pruébalo abajo. ✅
+            El <b>conector de WhatsApp Web</b> está apagado. En tu PC, dentro de la carpeta <span className="text-text-muted">whatsapp-connector</span>, ejecuta <span className="text-text-muted">node index.js</span> (con <span className="text-text-muted">API_SHARED_SECRET</span> igual al de Vercel), escanea el QR con WhatsApp Business → Dispositivos vinculados y deja la ventana abierta. Aquí se pondrá en <span className="text-ok">verde</span> solo. Mientras tanto, puedes probar el bot abajo. ✅
           </div>
         )}
       </div>

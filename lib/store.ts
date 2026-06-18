@@ -141,6 +141,8 @@ interface DeckState {
   runAIPipelineLead: (id: string) => Promise<void>;
   /** Pipeline completo + auto-envío del 1er WhatsApp por el conector (anti-baneo). */
   autoCloseLead: (id: string) => Promise<void>;
+  /** Escribe por WhatsApp a un LOTE de prospectos con tope de seguridad (anti-baneo). */
+  messageProspectsBatch: (limit?: number) => Promise<void>;
   /** Detiene el pipeline con IA en curso. */
   stopAIPipeline: () => void;
   /** Registras TÚ que ya enviaste el contacto (lo marcas como hecho de verdad). */
@@ -648,6 +650,34 @@ export const useDeck = create<DeckState>()(
     });
     const updated = get().leads.find((l) => l.id === id);
     if (updated) syncStatesToServer([updated]);
+  },
+
+  // Envío por LOTES a prospectos (con teléfono, sin contactar aún), con TOPE de seguridad.
+  // Anti-baneo: el conector envía con ritmo humano y topes por minuto/hora/día; aquí limitamos
+  // cuántos leads se preparan/encolan por tanda para no quemar el número.
+  messageProspectsBatch: async (limit = 15) => {
+    const open = get().leads
+      .filter((l) => l.phone && l.stage !== "won" && l.stage !== "lost" && !l.outreach?.sentAt)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.max(1, Math.min(limit, 40)));
+    if (!open.length) {
+      set({ aiPipeline: { running: false, current: 0, total: 0, note: "No hay prospectos con teléfono sin contactar." } });
+      return;
+    }
+    set({ aiPipeline: { running: true, current: 0, total: open.length, note: `Escribiendo a ${open.length} prospectos (envío anti-baneo por el conector)…` } });
+    for (let i = 0; i < open.length; i++) {
+      if (!get().aiPipeline.running) break;
+      const lead = get().leads.find((l) => l.id === open[i].id);
+      if (!lead) continue;
+      const res = await runAILead(lead, (patch) => applyAIResult(set, get, lead.id, patch), { sendWhatsApp: true });
+      set((s) => ({ aiPipeline: { ...s.aiPipeline, current: i + 1 } }));
+      if (res.stop) {
+        set((s) => ({ aiPipeline: { ...s.aiPipeline, running: false, note: res.note } }));
+        return;
+      }
+    }
+    syncStatesToServer(get().leads.filter((l) => open.some((o) => o.id === l.id)));
+    set((s) => ({ aiPipeline: { ...s.aiPipeline, running: false, note: `Listo: ${open.length} prospectos encolados. El conector los envía con ritmo anti-baneo y el bot seguirá las respuestas.` } }));
   },
 
   // Cierre automático: pipeline completo + ENVÍA el primer WhatsApp por el conector (anti-baneo).

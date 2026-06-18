@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, readJsonLimited, currentUser, vstr } from "@/lib/security";
 import { getKB, saveKB, getWaLog, type FAQ } from "@/lib/knowledge";
-import { isLive } from "@/lib/integrations/config";
+import { connectorLive } from "@/lib/waconnector";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +14,8 @@ export async function GET(req: Request) {
   if (!u) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
   const kb = await getKB();
   const log = u.role === "admin" ? await getWaLog() : [];
-  return NextResponse.json({ ok: true, kb, waLive: isLive("whatsapp"), log: log.slice(0, 40), role: u.role });
+  // waLive = conector WhatsApp Web vivo (latido reciente), NO la API de Meta.
+  return NextResponse.json({ ok: true, kb, waLive: await connectorLive(), log: log.slice(0, 40), role: u.role });
 }
 
 // POST /api/knowledge — guarda cambios (solo admin).

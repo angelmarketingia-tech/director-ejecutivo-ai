@@ -10,7 +10,7 @@ import { HotLeads } from "@/components/deck/HotLeads";
 import { FollowUps } from "@/components/deck/FollowUps";
 import { PipelineBoard } from "@/components/deck/PipelineBoard";
 import { IS_DEMO } from "@/lib/demoFlag";
-import { UserPlus, Zap, Globe, Loader2, Search } from "lucide-react";
+import { UserPlus, Zap, Globe, Loader2, Search, Send } from "lucide-react";
 
 function WebProspect() {
   const addDiscoveredLeads = useDeck((s) => s.addDiscoveredLeads);
@@ -122,6 +122,7 @@ function ControlBar() {
   const closeAllOpen = useDeck((s) => s.closeAllOpen);
   const runAIPipeline = useDeck((s) => s.runAIPipeline);
   const stopAIPipeline = useDeck((s) => s.stopAIPipeline);
+  const messageProspectsBatch = useDeck((s) => s.messageProspectsBatch);
   const ai = useDeck((s) => s.aiPipeline);
   const [result, setResult] = useState<string | null>(null);
 
@@ -162,6 +163,23 @@ function ControlBar() {
             className="flex items-center gap-2 rounded-lg border border-director/40 bg-director/15 px-3 py-2 text-[12px] font-semibold text-director transition-colors hover:bg-director/25"
           >
             <Zap className="h-3.5 w-3.5" /> Ejecutar pipeline con IA (todos)
+          </button>
+        )}
+
+        {/* Escribir a prospectos por WhatsApp (lote seguro anti-baneo) */}
+        {!ai.running && (
+          <button
+            data-testid="btn-message-prospects"
+            onClick={() => {
+              if (confirm("Escribir por WhatsApp a tus prospectos (con teléfono, sin contactar aún).\n\nSe envía un LOTE de máximo 15, y el conector los manda con ritmo humano anti-baneo. Recomendado: pocos al día en un número 'calentado'.\n\n¿Continuar?")) {
+                setResult(null);
+                messageProspectsBatch(15);
+              }
+            }}
+            className="flex items-center gap-2 rounded-lg border border-brand/40 bg-brand/15 px-3 py-2 text-[12px] font-semibold text-brand transition-colors hover:bg-brand/25"
+            title="Genera el mensaje y lo envía por el conector (ritmo anti-baneo). Máximo 15 por tanda."
+          >
+            <Send className="h-3.5 w-3.5" /> Escribir a prospectos (lote seguro)
           </button>
         )}
 

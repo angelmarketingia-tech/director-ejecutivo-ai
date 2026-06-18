@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, readJsonLimited, authorized } from "@/lib/security";
 import { getOutbox, markSent } from "@/lib/wachat";
+import { touchConnector } from "@/lib/waconnector";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export async function GET(req: Request) {
   const rl = rateLimit(req, "wa-outbox-get", 240, 60_000);
   if (!rl.ok) return NextResponse.json({ ok: false, error: "Rate limit" }, { status: 429 });
   if (!(await authorized(req))) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+  await touchConnector(); // el conector golpea esto cada ~5s → latido de "conectado"
   return NextResponse.json({ ok: true, messages: await getOutbox() });
 }
 
