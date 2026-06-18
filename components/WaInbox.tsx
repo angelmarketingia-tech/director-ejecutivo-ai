@@ -20,7 +20,7 @@ export function WaInbox() {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 5000); // bandeja en vivo
+    const id = setInterval(load, 3000); // bandeja en vivo (casi tiempo real)
     return () => clearInterval(id);
   }, []);
 

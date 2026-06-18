@@ -50,6 +50,9 @@ function canSend(to) {
 }
 function markSent(to) { const t = Date.now(); sentMin.push(t); sentHour.push(t); sentDay.push(t); lastByContact.set(to, t); }
 
+// Ids de mensajes que ENVIAMOS nosotros (bot/app) para no duplicarlos en message_create.
+const selfSent = new Set();
+
 /** Envía como humano: marca visto → "escribiendo…" → espera realista → envía. */
 async function humanSend(chatId, text) {
   try {
@@ -60,7 +63,8 @@ async function humanSend(chatId, text) {
     await sleep(delay);
     await chat.clearState().catch(() => {});
   } catch { await sleep(rand(MIN_DELAY, MAX_DELAY)); }
-  await client.sendMessage(chatId, text);
+  const sent = await client.sendMessage(chatId, text);
+  try { if (sent?.id?._serialized) selfSent.add(sent.id._serialized); } catch {}
   markSent(chatId);
 }
 
@@ -90,7 +94,26 @@ async function syncChats() {
 client.on("ready", async () => {
   console.log("✅ Conectado (modo seguro anti-baneo). Deja esta ventana abierta.");
   await syncChats();
-  setInterval(syncChats, 60000);
+  setInterval(syncChats, 12000); // sincroniza cada 12s (casi tiempo real)
+});
+
+// Mensajes que TÚ envías desde tu celular → reflejarlos en la app (tiempo real).
+// Dedupe: si lo envió el bot/app (selfSent) se ignora para no duplicar.
+client.on("message_create", async (msg) => {
+  try {
+    if (!msg.fromMe) return;                                  // solo lo que sale de tu número
+    if (msg.id?._serialized && selfSent.has(msg.id._serialized)) return; // ya lo registró el bot/app
+    if ((msg.to || "").endsWith("@g.us")) return;             // grupos no
+    if (msg.type !== "chat" || !msg.body) return;             // solo texto
+    const to = (msg.to || "").replace("@c.us", "");
+    if (!to) return;
+    await fetch(APP + "/api/whatsapp/sync", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ chats: [{ id: to, text: msg.body, fromMe: true, at: (msg.timestamp ? msg.timestamp * 1000 : Date.now()) }] }),
+    });
+    console.log(`📤 (tú, desde el cel) → ${to}: ${msg.body.slice(0, 50)}`);
+  } catch (e) { console.error("message_create error:", e.message); }
 });
 
 // Entrantes → app → (si bot activo) respuesta humana-realista
