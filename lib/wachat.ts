@@ -101,10 +101,16 @@ export async function addBotReply(id: string, text: string): Promise<void> {
   await writeAll(chats);
 }
 
-/** El humano encola un mensaje; el conector lo enviará. */
+/** El humano/IA encola un mensaje; el conector lo enviará UNA sola vez. */
 export async function queueHuman(id: string, text: string): Promise<void> {
   const chats = await readAll();
   const c = findOrCreate(chats, id);
+  // Dedupe: no encolar si ya hay un mensaje idéntico pendiente, o si ya se envió uno
+  // idéntico en los últimos 10 min (evita doble-clic / reintentos → doble envío).
+  const dup = c.messages.some(
+    (m) => m.dir === "out" && m.text === text && (m.status === "queued" || Date.now() - m.at < 600_000)
+  );
+  if (dup) return;
   c.messages.push({ id: mid(), dir: "out", by: "human", text, at: Date.now(), status: "queued" });
   touch(c);
   await writeAll(chats);

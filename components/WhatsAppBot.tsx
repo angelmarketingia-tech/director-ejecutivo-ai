@@ -45,6 +45,24 @@ export function WhatsAppBot() {
     setTimeout(() => setSavedMsg(null), 2500);
   }
 
+  // Lee .txt/.md directo y extrae texto de .pdf con pdf.js (cargado desde CDN, sin dependencia en el bundle).
+  async function readUpload(f: File): Promise<string> {
+    const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) return f.text();
+    const pdfUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs";
+    const pdfjs: any = await import(/* webpackIgnore: true */ pdfUrl);
+    pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs";
+    const buf = await f.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buf }).promise;
+    let out = "";
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      out += content.items.map((it: any) => it.str).join(" ") + "\n";
+    }
+    return out;
+  }
+
   async function test() {
     setTesting(true); setTestReply(null);
     try {
@@ -139,12 +157,19 @@ export function WhatsAppBot() {
             <p className="label-eyebrow">Recomendaciones / contexto extra (la IA lo usa)</p>
             {admin && (
               <label className="cursor-pointer rounded-md border border-border bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-muted hover:text-text">
-                + Cargar archivo (.txt/.md)
-                <input type="file" accept=".txt,.md,text/plain,text/markdown" className="hidden" onChange={async (e) => {
-                  const f = e.target.files?.[0]; if (!f || !kb) return;
-                  const txt = await f.text();
-                  setKb({ ...kb, extraNotes: ((kb.extraNotes || "") + "\n\n# " + f.name + "\n" + txt).slice(0, 12000) });
-                  e.currentTarget.value = "";
+                + Cargar archivo (.txt/.md/.pdf)
+                <input type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" className="hidden" onChange={async (e) => {
+                  const f = e.target.files?.[0]; const input = e.currentTarget; if (!f || !kb) return;
+                  setSavedMsg("Leyendo archivo…");
+                  try {
+                    const txt = await readUpload(f);
+                    setKb({ ...kb, extraNotes: ((kb.extraNotes || "") + "\n\n# " + f.name + "\n" + txt).slice(0, 500000) });
+                    setSavedMsg("✅ Archivo agregado · pulsa Guardar");
+                  } catch {
+                    setSavedMsg("⚠️ No se pudo leer ese PDF. Conviértelo a .txt e inténtalo.");
+                  }
+                  input.value = "";
+                  setTimeout(() => setSavedMsg(null), 3500);
                 }} />
               </label>
             )}

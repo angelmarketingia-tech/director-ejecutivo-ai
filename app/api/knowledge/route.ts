@@ -26,22 +26,22 @@ export async function POST(req: Request) {
   if (!u) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
   if (u.role !== "admin") return NextResponse.json({ ok: false, error: "Solo el admin edita la base de conocimiento" }, { status: 403 });
 
-  const { data, tooLarge, bad } = await readJsonLimited(req, 30_000);
+  const { data, tooLarge, bad } = await readJsonLimited(req, 800_000); // hasta ~800 KB (KB extensa + PDFs)
   if (tooLarge) return NextResponse.json({ ok: false, error: "Payload demasiado grande" }, { status: 413 });
   if (bad) return NextResponse.json({ ok: false, error: "JSON inválido" }, { status: 400 });
 
   const patch: any = {};
   const d = data as any;
   for (const k of ["businessName", "about", "services", "pricing", "tone", "optOutWord"]) {
-    if (typeof d?.[k] === "string") patch[k] = vstr(d[k], 6000) ?? "";
+    if (typeof d?.[k] === "string") patch[k] = vstr(d[k], 40_000) ?? "";
   }
-  if (typeof d?.extraNotes === "string") patch.extraNotes = d.extraNotes.slice(0, 12000);
+  if (typeof d?.extraNotes === "string") patch.extraNotes = d.extraNotes.slice(0, 500_000); // sin límites cortos
   if (typeof d?.autoReplyEnabled === "boolean") patch.autoReplyEnabled = d.autoReplyEnabled;
   if (Array.isArray(d?.faqs)) {
     patch.faqs = d.faqs
-      .map((f: any) => ({ q: vstr(f?.q, 300) ?? "", a: vstr(f?.a, 1500) ?? "" }))
+      .map((f: any) => ({ q: vstr(f?.q, 1000) ?? "", a: vstr(f?.a, 12_000) ?? "" }))
       .filter((f: FAQ) => f.q && f.a)
-      .slice(0, 40);
+      .slice(0, 100);
   }
   const kb = await saveKB(patch);
   return NextResponse.json({ ok: true, kb });

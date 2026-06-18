@@ -17,15 +17,18 @@ const APP = process.env.APP_URL || "https://director-ejecutivo-ai.vercel.app";
 const SECRET = process.env.API_SHARED_SECRET || "";
 const headers = { "content-type": "application/json", ...(SECRET ? { "x-api-secret": SECRET } : {}) };
 
-// ── Parámetros anti-baneo (ajustables por env) ──
-const MIN_DELAY = Number(process.env.WA_MIN_DELAY_MS || 4000);   // espera mínima antes de responder
-const MAX_DELAY = Number(process.env.WA_MAX_DELAY_MS || 9000);   // + extra aleatorio
-const PER_CHAR_MS = 35;                                          // "tiempo de tecleo" por carácter
-const TYPING_MAX = 12000;                                        // tope de "escribiendo…"
-const CONTACT_COOLDOWN = Number(process.env.WA_CONTACT_COOLDOWN_MS || 6000);
-const PER_MIN = Number(process.env.WA_PER_MIN || 8);
-const PER_HOUR = Number(process.env.WA_PER_HOUR || 120);
-const DAILY_CAP = Number(process.env.WA_DAILY_CAP || 300);
+// ── Parámetros anti-baneo (ajustables por env) — defaults CONSERVADORES ──
+const MIN_DELAY = Number(process.env.WA_MIN_DELAY_MS || 6000);   // espera mínima antes de responder
+const MAX_DELAY = Number(process.env.WA_MAX_DELAY_MS || 14000);  // + extra aleatorio
+const PER_CHAR_MS = 40;                                          // "tiempo de tecleo" por carácter
+const TYPING_MAX = 15000;                                        // tope de "escribiendo…"
+const CONTACT_COOLDOWN = Number(process.env.WA_CONTACT_COOLDOWN_MS || 20000); // no repetir al mismo en 20s
+const PER_MIN = Number(process.env.WA_PER_MIN || 4);            // máx 4 envíos por minuto
+const PER_HOUR = Number(process.env.WA_PER_HOUR || 40);         // máx 40 por hora
+const DAILY_CAP = Number(process.env.WA_DAILY_CAP || 80);       // máx 80 al día (cold = bajo)
+// Pausa larga ocasional (parecer humano, no una máquina constante)
+const LONG_PAUSE_EVERY = Number(process.env.WA_LONG_PAUSE_EVERY || 8); // cada ~8 envíos
+const LONG_PAUSE_MS = Number(process.env.WA_LONG_PAUSE_MS || 45000);   // pausa ~45s
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -139,22 +142,52 @@ client.on("message", async (msg) => {
   } catch (e) { console.error("incoming error:", e.message); }
 });
 
-// Salientes que TÚ escribiste en la app (respetan también los límites y el ritmo humano)
+// Salientes que TÚ escribiste en la app (respetan también los límites y el ritmo humano).
+// BLINDAJE ANTI-DUPLICADOS (cada mensaje se envía EXACTAMENTE una vez):
+//  1) `polling` evita que dos ciclos se solapen (humanSend tarda 4-12s > intervalo).
+//  2) `doneIds` recuerda lo ya enviado por nosotros → jamás se reenvía aunque el server
+//     no alcance a marcarlo.
+//  3) se marca enviado de inmediato, mensaje por mensaje (no en lote).
+let polling = false;
+let sinceLongPause = 0;
+const doneIds = new Set();
 async function pollOutbox() {
+  if (polling) return; // un solo ciclo a la vez
+  polling = true;
   try {
     const r = await fetch(APP + "/api/whatsapp/outbox", { headers });
     const j = await r.json().catch(() => ({}));
-    if (j.ok && j.messages && j.messages.length) {
-      const sent = [];
-      for (const m of j.messages) {
-        const to = m.to.includes("@") ? m.to : m.to + "@c.us";
-        try { await humanSend(to, m.text); sent.push(m.msgId); console.log(`👤 → ${m.to}: ${m.text.slice(0, 60)}…`); }
-        catch (e) { console.error("send error:", e.message); }
-      }
-      if (sent.length) await fetch(APP + "/api/whatsapp/outbox", { method: "POST", headers, body: JSON.stringify({ ids: sent }) });
+    for (const m of (j.ok && j.messages) ? j.messages : []) {
+      if (doneIds.has(m.msgId)) continue; // ya enviado por nosotros → NUNCA reenviar
+      const to = m.to.includes("@") ? m.to : m.to + "@c.us";
+
+      // Respeta los topes anti-baneo: si toca esperar, deja el resto en cola para el próximo ciclo.
+      const block = canSend(to);
+      if (block) { console.log(`⏳ cola en pausa anti-baneo: ${block}`); break; }
+
+      // No enviar a números que NO tienen WhatsApp (un envío fallido es señal de spam).
+      try {
+        const reg = await client.isRegisteredUser(to).catch(() => true);
+        if (!reg) {
+          doneIds.add(m.msgId);
+          await fetch(APP + "/api/whatsapp/outbox", { method: "POST", headers, body: JSON.stringify({ ids: [m.msgId] }) }).catch(() => {});
+          console.log(`🚫 ${m.to} no tiene WhatsApp, omitido`);
+          continue;
+        }
+      } catch {}
+
+      try {
+        await humanSend(to, m.text);
+        doneIds.add(m.msgId);
+        await fetch(APP + "/api/whatsapp/outbox", { method: "POST", headers, body: JSON.stringify({ ids: [m.msgId] }) }).catch(() => {});
+        console.log(`👤 → ${m.to}: ${m.text.slice(0, 60)}…`);
+        // Pausa larga ocasional: parecer humano, no una máquina constante.
+        if (++sinceLongPause >= LONG_PAUSE_EVERY) { sinceLongPause = 0; console.log("😴 pausa larga anti-baneo…"); await sleep(LONG_PAUSE_MS); }
+      } catch (e) { console.error("send error:", e.message); }
     }
   } catch { /* reintenta luego */ }
+  finally { polling = false; }
 }
-setInterval(pollOutbox, 5000);
+setInterval(pollOutbox, 6000);
 
 client.initialize();

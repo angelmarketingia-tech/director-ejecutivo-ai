@@ -70,7 +70,7 @@ export function buildBotSystem(kb: KnowledgeBase): string {
     `\nPRECIOS:\n${kb.pricing}`,
     `\nPREGUNTAS FRECUENTES:\n${kb.faqs.map((f) => `P: ${f.q}\nR: ${f.a}`).join("\n")}`,
     `\nTONO Y REGLAS:\n${kb.tone}`,
-    kb.extraNotes?.trim() ? `\nCONTEXTO Y RECOMENDACIONES EXTRA (úsalo como fuente de verdad):\n${kb.extraNotes.slice(0, 8000)}` : "",
+    kb.extraNotes?.trim() ? `\nCONTEXTO Y RECOMENDACIONES EXTRA (úsalo como fuente de verdad):\n${kb.extraNotes.slice(0, 60000)}` : "",
     `- Responde SOLO con la información de esta base. Si no sabes algo, dilo con honestidad y ofrece que un asesor humano lo contacte. NUNCA inventes precios ni datos.`,
     `- Mensajes cortos y útiles, formato WhatsApp.`,
     `- Si el cliente quiere agendar o hablar con un humano, confírmalo y pide su nombre y horario preferido.`,
