@@ -100,6 +100,25 @@ test("API · WhatsApp incoming store-only no responde (ráfaga)", async ({ reque
   }
 });
 
+// ── Agente: salvaguardas (opt-out y auto-respuesta apagada → NO responde) ──
+test("AGENTE · opt-out (BAJA) no recibe auto-respuesta", async ({ request }) => {
+  const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000010", message: "BAJA" } });
+  if (r.status() === 200) {
+    const j = await r.json();
+    expect(j.reply).toBeNull();
+    expect(j.reason).toBe("opt-out");
+  } else expect(r.status()).toBe(401);
+});
+
+test("AGENTE · sin auto-respuesta activa → no responde solo", async ({ request }) => {
+  const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000011", message: "hola, info" } });
+  if (r.status() === 200) {
+    const j = await r.json();
+    expect(j.reply).toBeNull();
+    expect(["auto-off", "human", "stored"]).toContain(j.reason);
+  } else expect(r.status()).toBe(401);
+});
+
 // ── Endpoints del conector: validan el cuerpo aunque (en local sin secreto) estén abiertos ──
 test("API · projects/list valida guardado sin html (400)", async ({ request }) => {
   const r = await request.post("/api/projects/list", { data: { name: "X", kind: "web" } });

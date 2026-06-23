@@ -77,7 +77,7 @@ export function PixelOffice() {
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0, frame = 0, W = 0, H = 0;
     let lastDraw = 0, visible = true, inView = true;
-    const FRAME_MS = 1000 / 12; // ~12 fps: ambiente pixel suave y MUCHO más liviano que 60fps
+    const FRAME_MS = 1000 / 8; // ~8 fps: ambiente pixel, mínimo consumo de CPU
     let L = { cols: 2, rowH: 210, winH: 0, rows: 0, daptuxH: 224 };
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // tope de densidad → menos píxeles a pintar
     let hits: { x: number; y: number; w: number; h: number; area: string }[] = [];

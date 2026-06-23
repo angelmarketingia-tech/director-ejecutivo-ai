@@ -20,7 +20,7 @@ export function NeuralBackground({ density = 42, color = "34,211,238", accent = 
 
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0, lastDraw = 0, visible = true, inView = true;
-    const FRAME_MS = 1000 / 20; // ~20 fps: fluido y liviano
+    const FRAME_MS = 1000 / 14; // ~14 fps: fluido y liviano
     let w = 0, h = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     type P = { x: number; y: number; vx: number; vy: number; a: boolean };
     let pts: P[] = [];

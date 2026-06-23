@@ -33,25 +33,11 @@ const LONG_PAUSE_MS = Number(process.env.WA_LONG_PAUSE_MS || 45000);   // pausa 
 const rand = (a, b) => a + Math.random() * (b - a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Ventanas de conteo
-let sentMin = [], sentHour = [], sentDay = [], dayStamp = new Date().getDate();
-const lastByContact = new Map();
-function prune() {
-  const now = Date.now();
-  sentMin = sentMin.filter((t) => now - t < 60_000);
-  sentHour = sentHour.filter((t) => now - t < 3_600_000);
-  if (new Date().getDate() !== dayStamp) { sentDay = []; dayStamp = new Date().getDate(); }
-}
-function canSend(to) {
-  prune();
-  const now = Date.now();
-  if (sentDay.length >= DAILY_CAP) return "tope diario";
-  if (sentHour.length >= PER_HOUR) return "tope por hora";
-  if (sentMin.length >= PER_MIN) return "tope por minuto";
-  if (now - (lastByContact.get(to) || 0) < CONTACT_COOLDOWN) return "cooldown del contacto";
-  return null;
-}
-function markSent(to) { const t = Date.now(); sentMin.push(t); sentHour.push(t); sentDay.push(t); lastByContact.set(to, t); }
+// Límite de ritmo anti-baneo (módulo testeable; ver antiban.test.js).
+const { createRateLimiter } = require("./antiban");
+const limiter = createRateLimiter({ perMin: PER_MIN, perHour: PER_HOUR, dailyCap: DAILY_CAP, cooldownMs: CONTACT_COOLDOWN });
+const canSend = (to) => limiter.canSend(to);
+const markSent = (to) => limiter.record(to);
 
 // Ids de mensajes que ENVIAMOS nosotros (bot/app) para no duplicarlos en message_create.
 const selfSent = new Set();
