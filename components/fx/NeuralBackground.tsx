@@ -19,8 +19,9 @@ export function NeuralBackground({ density = 42, color = "34,211,238", accent = 
     const c2d = ctx;
 
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0;
-    let w = 0, h = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let raf = 0, lastDraw = 0, visible = true, inView = true;
+    const FRAME_MS = 1000 / 20; // ~20 fps: fluido y liviano
+    let w = 0, h = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     type P = { x: number; y: number; vx: number; vy: number; a: boolean };
     let pts: P[] = [];
 
@@ -41,6 +42,11 @@ export function NeuralBackground({ density = 42, color = "34,211,238", accent = 
     }
 
     function frame() {
+      raf = requestAnimationFrame(frame);
+      if (!visible || !inView) return;
+      const now = performance.now();
+      if (now - lastDraw < FRAME_MS) return;
+      lastDraw = now;
       c2d.clearRect(0, 0, w, h);
       for (const p of pts) {
         p.x += p.vx; p.y += p.vy;
@@ -67,15 +73,20 @@ export function NeuralBackground({ density = 42, color = "34,211,238", accent = 
         c2d.arc(p.x, p.y, p.a ? 2.2 : 1.4, 0, Math.PI * 2);
         c2d.fill();
       }
-      raf = requestAnimationFrame(frame);
     }
 
+    function frameOnce() { c2d.clearRect(0, 0, w, h); for (const p of pts) { c2d.beginPath(); c2d.fillStyle = `rgba(${p.a ? accent : color},0.9)`; c2d.arc(p.x, p.y, p.a ? 2.2 : 1.4, 0, Math.PI * 2); c2d.fill(); } }
+
     resize();
-    if (reduce) { frame(); cancelAnimationFrame(raf); } // dibuja un cuadro estático
+    if (reduce) { frameOnce(); } // un cuadro estático, sin bucle
     else raf = requestAnimationFrame(frame);
+    const onVis = () => { visible = !document.hidden; };
+    document.addEventListener("visibilitychange", onVis);
+    const io = new IntersectionObserver((es) => { inView = es[0]?.isIntersecting ?? true; }, { threshold: 0 });
+    io.observe(cv);
     const ro = new ResizeObserver(resize);
     if (cv.parentElement) ro.observe(cv.parentElement);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); document.removeEventListener("visibilitychange", onVis); };
   }, [density, color, accent]);
 
   return <canvas ref={ref} className="pointer-events-none absolute inset-0 h-full w-full opacity-60" aria-hidden />;

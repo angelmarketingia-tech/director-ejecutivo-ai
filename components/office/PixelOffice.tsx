@@ -76,7 +76,10 @@ export function PixelOffice() {
     const cv = canvas, c2d = ctx;
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0, frame = 0, W = 0, H = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let lastDraw = 0, visible = true, inView = true;
+    const FRAME_MS = 1000 / 12; // ~12 fps: ambiente pixel suave y MUCHO más liviano que 60fps
+    let L = { cols: 2, rowH: 210, winH: 0, rows: 0, daptuxH: 224 };
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // tope de densidad → menos píxeles a pintar
     let hits: { x: number; y: number; w: number; h: number; area: string }[] = [];
 
     const R = (x: number, y: number, w: number, h: number, c: string) => { c2d.fillStyle = c; c2d.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
@@ -269,8 +272,9 @@ export function PixelOffice() {
       c2d.fillStyle = color; c2d.font = "700 8.5px ui-sans-serif"; c2d.textAlign = "center"; c2d.fillText((vip ? "⭐ " : "") + label, cx, topY + 96);
     }
 
-    function loop() {
-      const { cols, rowH, winH, daptuxH } = layout();
+    // Pinta UN frame (lee el layout ya calculado en L; NO redimensiona el canvas aquí).
+    function draw() {
+      const { cols, rowH, winH, daptuxH } = L;
       hits = [];
       c2d.clearRect(0, 0, W, H);
       drawWindow(winH);
@@ -290,7 +294,15 @@ export function PixelOffice() {
       c2d.fillStyle = st === "night" ? "rgba(10,20,55,0.16)" : st === "dusk" ? "rgba(255,170,90,0.05)" : "rgba(255,245,210,0.03)";
       c2d.fillRect(0, winH, W, H - winH);
       frame++;
-      if (!reduce) raf = requestAnimationFrame(loop);
+    }
+
+    // Driver con TOPE de FPS y pausa cuando no se ve (pestaña oculta o canvas fuera de vista).
+    function tick(now: number) {
+      raf = requestAnimationFrame(tick);
+      if (!visible || !inView) return;
+      if (now - lastDraw < FRAME_MS) return;
+      lastDraw = now;
+      draw();
     }
 
     function onClick(e: MouseEvent) {
@@ -299,11 +311,28 @@ export function PixelOffice() {
       if (hit) setArea(hit.area as any);
     }
 
-    layout(); loop(); if (reduce) loop();
+    const relayout = () => { L = layout(); draw(); };
+    relayout();
     cv.addEventListener("click", onClick); cv.style.cursor = "pointer";
-    const ro = new ResizeObserver(() => { layout(); if (reduce) loop(); });
+
+    // Pausas que ahorran CPU: pestaña en segundo plano y canvas fuera de la pantalla.
+    const onVis = () => { visible = !document.hidden; };
+    document.addEventListener("visibilitychange", onVis);
+    const io = new IntersectionObserver((es) => { inView = es[0]?.isIntersecting ?? true; }, { threshold: 0 });
+    io.observe(cv);
+
+    const ro = new ResizeObserver(() => relayout());
     if (cv.parentElement) ro.observe(cv.parentElement);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); cv.removeEventListener("click", onClick); };
+
+    if (!reduce) raf = requestAnimationFrame(tick); // si reduce-motion: 1 frame estático, sin bucle
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVis);
+      cv.removeEventListener("click", onClick);
+    };
   }, [setArea]);
 
   return (
