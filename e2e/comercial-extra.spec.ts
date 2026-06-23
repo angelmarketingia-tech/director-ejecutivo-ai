@@ -88,6 +88,18 @@ test("API · rutas con sesión exigen login (401)", async ({ request }) => {
   expect((await request.get("/api/spend")).status()).toBe(401);
 });
 
+// ── Ráfaga: el modo store-only guarda el mensaje pero NO responde (responde 1 vez luego) ──
+test("API · WhatsApp incoming store-only no responde (ráfaga)", async ({ request }) => {
+  const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000001", message: "hola", reply: false } });
+  if (r.status() === 200) {
+    const j = await r.json();
+    expect(j.ok).toBe(true);
+    expect(j.reply).toBeNull(); // guardado, sin responder aún
+  } else {
+    expect(r.status()).toBe(401); // en prod con secreto exigido
+  }
+});
+
 // ── Endpoints del conector: validan el cuerpo aunque (en local sin secreto) estén abiertos ──
 test("API · projects/list valida guardado sin html (400)", async ({ request }) => {
   const r = await request.post("/api/projects/list", { data: { name: "X", kind: "web" } });

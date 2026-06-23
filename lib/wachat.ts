@@ -56,6 +56,12 @@ export async function getChats(): Promise<WaChat[]> {
   return chats.sort((a, b) => b.lastAt - a.lastAt);
 }
 
+/** Un chat por id (para generar respuesta usando su historial). */
+export async function getChat(id: string): Promise<WaChat | null> {
+  const chats = await readAll();
+  return chats.find((c) => c.id === id) ?? null;
+}
+
 function findOrCreate(chats: WaChat[], id: string, name?: string): WaChat {
   let c = chats.find((x) => x.id === id);
   if (!c) {

@@ -119,7 +119,37 @@ client.on("message_create", async (msg) => {
   } catch (e) { console.error("message_create error:", e.message); }
 });
 
-// Entrantes → app → (si bot activo) respuesta humana-realista
+// ── Respuesta humana a RÁFAGAS ──
+// Si llegan varios mensajes seguidos, NO respondemos a cada uno: guardamos todos al
+// instante (para verlos en la app) y respondemos UNA sola vez tras una ventana de
+// "silencio" (como una persona que lee todo y luego contesta). Con tope máximo.
+const REPLY_QUIET_MS = Number(process.env.WA_REPLY_QUIET_MS || 9000);  // espera tras el último mensaje
+const REPLY_MIN_MS = Number(process.env.WA_REPLY_MIN_MS || 3000);      // "tiempo de leer" mínimo
+const REPLY_MAX_MS = Number(process.env.WA_REPLY_MAX_MS || 30000);     // tope aunque sigan llegando
+const replyTimers = new Map(); // chatId -> { timer, firstAt }
+
+function scheduleReply(chatId, from, name) {
+  let st = replyTimers.get(chatId);
+  if (!st) { st = { timer: null, firstAt: Date.now() }; replyTimers.set(chatId, st); }
+  if (st.timer) clearTimeout(st.timer);
+  const waited = Date.now() - st.firstAt;
+  const wait = Math.max(REPLY_MIN_MS, Math.min(REPLY_QUIET_MS, REPLY_MAX_MS - waited));
+  st.timer = setTimeout(() => doReply(chatId, from, name), wait);
+}
+
+async function doReply(chatId, from, name) {
+  replyTimers.delete(chatId);
+  try {
+    const block = canSend(chatId);
+    if (block) { console.log(`⏸️ ${from}: respuesta diferida (${block})`); return; }
+    const r = await fetch(APP + "/api/whatsapp/incoming", { method: "POST", headers, body: JSON.stringify({ from, name, replyOnly: true }) });
+    const j = await r.json().catch(() => ({}));
+    if (j.ok && j.reply) { await humanSend(chatId, j.reply); console.log(`🤖 → ${from}: ${j.reply.slice(0, 60)}…`); }
+    else console.log(`📥 ${from}: (${j.reason || "sin auto"})`);
+  } catch (e) { console.error("reply error:", e.message); }
+}
+
+// Entrantes: guarda YA cada mensaje (sin responder) y agenda UNA respuesta humana.
 client.on("message", async (msg) => {
   try {
     if (msg.fromMe) return;
@@ -129,16 +159,10 @@ client.on("message", async (msg) => {
     const from = msg.from.replace("@c.us", "");
     let name;
     try { const c = await msg.getContact(); name = c.pushname || c.name || undefined; } catch {}
-    const r = await fetch(APP + "/api/whatsapp/incoming", { method: "POST", headers, body: JSON.stringify({ from, name, message: msg.body }) });
-    const j = await r.json().catch(() => ({}));
-    if (j.ok && j.reply) {
-      const block = canSend(msg.from);
-      if (block) { console.log(`⏸️ ${from}: respuesta diferida (${block})`); return; } // se atiende manual o luego
-      await humanSend(msg.from, j.reply);
-      console.log(`🤖 → ${from}: ${j.reply.slice(0, 60)}…`);
-    } else {
-      console.log(`📥 ${from}: ${msg.body.slice(0, 50)} (${j.reason || "sin auto"})`);
-    }
+    // 1) guarda el mensaje al instante (visible en la app), SIN responder todavía
+    await fetch(APP + "/api/whatsapp/incoming", { method: "POST", headers, body: JSON.stringify({ from, name, message: msg.body, reply: false }) }).catch(() => {});
+    // 2) agenda una sola respuesta tras la ventana de silencio (lee toda la ráfaga)
+    scheduleReply(msg.from, from, name);
   } catch (e) { console.error("incoming error:", e.message); }
 });
 
