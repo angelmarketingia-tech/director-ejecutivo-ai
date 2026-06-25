@@ -72,6 +72,14 @@ test("COMERCIAL · WhatsApp: bandeja visible y sin errores", async ({ page }) =>
   await assertClean(errors);
 });
 
+test("DIRECTIVA · finanzas (cotizaciones y suscripciones) visibles", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-directiva").click();
+  await expect(page.getByTestId("btn-create-quote")).toBeVisible();
+  await expect(page.getByTestId("btn-add-sub")).toBeVisible();
+  await assertClean(errors);
+});
+
 test("DESARROLLO · constructor, generador de webs e historial de proyectos", async ({ page }) => {
   const errors = spyErrors(page);
   await page.getByTestId("area-ingenieria").click();

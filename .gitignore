@@ -20,4 +20,9 @@ _serve_landing.js
 whatsapp-connector/node_modules
 whatsapp-connector/.wwebjs_auth
 whatsapp-connector/.wwebjs_cache
+# Sesiones de WhatsApp Web (locales, NO van al repo) — en cualquier ubicación
+.wwebjs_auth/
+.wwebjs_cache/
+**/.wwebjs_auth/
+**/.wwebjs_cache/
 _serve_avemaria.js

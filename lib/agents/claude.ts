@@ -33,6 +33,33 @@ function modelForAgent(agent: AgentId, preset: Preset = ACTIVE_PRESET): ClaudeMo
   return PRESETS[preset][agent];
 }
 
+/**
+ * Reintenta una llamada SOLO ante fallos transitorios (429 rate limit, 5xx/overloaded,
+ * red caída) con backoff exponencial + jitter. No reintenta 400/refusal/presupuesto.
+ * Hace el sistema resistente a picos de la API bajo uso intensivo.
+ */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e: unknown) {
+      lastErr = e;
+      const err = e as { status?: number; statusCode?: number; message?: string; name?: string };
+      const status = err?.status ?? err?.statusCode;
+      const msg = String(err?.message ?? err?.name ?? "");
+      const transient =
+        status === 429 ||
+        (typeof status === "number" && status >= 500 && status < 600) ||
+        /overloaded|rate limit|timeout|ECONNRESET|ETIMEDOUT|ENOTFOUND|fetch failed|network/i.test(msg);
+      if (!transient || i === attempts - 1) throw e;
+      const wait = 500 * Math.pow(3, i) + Math.floor(Math.random() * 350); // 0.5s, 1.5s, 4.5s (+jitter)
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
 let _client: Anthropic | null = null;
 export function getClient(): Anthropic {
   if (!env.anthropicKey) {
@@ -127,7 +154,7 @@ export async function runRaw<T = unknown>(
 
   if (model === "claude-fable-5") {
     // Fable 5: pensamiento siempre activo (omitir `thinking`) + fallback a Opus 4.8.
-    const res = await client.beta.messages.create({
+    const res = await withRetry(() => client.beta.messages.create({
       model,
       max_tokens: maxTokens,
       betas: ["server-side-fallback-2026-06-01"],
@@ -135,7 +162,7 @@ export async function runRaw<T = unknown>(
       system,
       output_config: outputConfig,
       messages,
-    });
+    }));
     recordUsage((res.model as ClaudeModel) ?? model, res.usage);
     if (res.stop_reason === "refusal") {
       return { data: null as T, model: res.model, refused: true, usage: res.usage };
@@ -149,13 +176,13 @@ export async function runRaw<T = unknown>(
   }
 
   // Opus 4.8 / Haiku 4.5
-  const res = await client.messages.create({
+  const res = await withRetry(() => client.messages.create({
     model,
     max_tokens: maxTokens,
     system,
     output_config: outputConfig,
     messages: [{ role: "user", content: opts.input }],
-  });
+  }));
   recordUsage(model, res.usage);
   return {
     data: extractJson<T>(res.content as any),
