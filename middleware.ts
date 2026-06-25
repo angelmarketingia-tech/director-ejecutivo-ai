@@ -28,5 +28,5 @@ export async function middleware(req: NextRequest) {
 // Protege todo excepto: recursos internos, login, rutas de auth, los endpoints del
 // conector/webhook de WhatsApp (se autentican con x-api-secret) y las demos públicas /w.
 export const config = {
-  matcher: ["/((?!_next|favicon.ico|login|api/auth|api/webhooks|api/whatsapp/incoming|api/whatsapp/outbox|api/whatsapp/sync|w/).*)"],
+  matcher: ["/((?!_next|favicon.ico|login|api/auth|api/health|api/webhooks|api/whatsapp/incoming|api/whatsapp/outbox|api/whatsapp/sync|w/).*)"],
 };

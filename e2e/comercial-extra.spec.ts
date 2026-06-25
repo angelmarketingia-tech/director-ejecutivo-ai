@@ -96,6 +96,17 @@ test("API · rutas con sesión exigen login (401)", async ({ request }) => {
   expect((await request.get("/api/spend")).status()).toBe(401);
 });
 
+// ── Observabilidad: /api/health público y sin exponer secretos ──
+test("API · /api/health responde saludable y no filtra secretos", async ({ request }) => {
+  const r = await request.get("/api/health");
+  expect(r.status()).toBe(200);
+  const j = await r.json();
+  expect(j.ok).toBe(true);
+  expect(j.status).toBe("healthy");
+  // Sin sesión admin no debe incluir el detalle de integraciones.
+  expect(j.integrations).toBeUndefined();
+});
+
 // ── Ráfaga: el modo store-only guarda el mensaje pero NO responde (responde 1 vez luego) ──
 test("API · WhatsApp incoming store-only no responde (ráfaga)", async ({ request }) => {
   const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000001", message: "hola", reply: false } });
