@@ -79,6 +79,21 @@ Esta sesión cerró brechas de **resiliencia** (reintentos a la API), **rendimie
   `HIGGSFIELD_CREDENTIALS`, `PEXELS_API_KEY`, `RESEND_API_KEY`/`EMAIL_FROM`, KV (`UPSTASH_*`),
   `APP_USER`/`APP_PASSWORD`. Sin claves, cada función lo dice (no inventa).
 
+## 5.bis) Endurecimiento del AGENTE DE WHATSAPP (foco de esta iteración) — todo verificado
+- [x] **Coherencia total con la KB:** responde usando todo el historial del chat.
+- [x] **Ráfagas:** guarda cada mensaje al instante y responde UNA vez, con tiempo humano (quiet/min/max).
+- [x] **Anti-baneo:** topes (4/min·40/h·80/día) + cooldown + verificación de número + pausa larga;
+      módulo `antiban.js` con **5/5 unit tests**.
+- [x] **Envío único:** lock + `doneIds` + dedupe server → nunca duplica.
+- [x] **Opt-out PERMANENTE y robusto:** reconoce BAJA/STOP/NO MOLESTAR… por palabra completa
+      (sin falsos positivos tipo "rebaja"); **bloquea TODO envío futuro** (bot, lote y manual → 409);
+      badge **BAJA** en la bandeja. E2E: opt-out, STOP, sin-falso-positivo.
+- [x] **Cap de respuesta** (1500) + descarte de respuestas vacías.
+- [x] **Auto-reconexión del conector** ante caídas transitorias (no en LOGOUT), con backoff.
+- [x] **Resiliencia IA:** reintentos con backoff en todas las llamadas a Claude.
+- [x] **Observabilidad:** `/api/health` (público mínimo; detalle solo admin, sin secretos).
+Evidencia: `tsc` limpio · `build` limpio · **E2E 62 verde** (2 skipped) · **unit 5/5** · security review sin hallazgos.
+
 ## 6) Nota honesta sobre "valoración de USD 1.000.000"
 El trabajo deja el **producto** con robustez/seguridad/UX de nivel comercial. El **valor de mercado**
 real depende de tracción, clientes, ingresos y retención — no solo del código. Este informe cubre la
