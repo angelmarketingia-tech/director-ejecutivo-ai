@@ -53,8 +53,9 @@ Esta sesión cerró brechas de **resiliencia** (reintentos a la API), **rendimie
 - [x] KB extensa (500k) + carga .md/.txt/.PDF.
 - [x] Directiva: cotizaciones/suscripciones/pagos (E2E visible).
 - [x] Auditoría de gasto de tokens por usuario/acción; KPIs.
-- [~] Desarrollo "QA que corrige" (hoy QA reporta; aplicar correcciones = mejora pendiente).
-- [~] Multi-imagen Higgsfield por sección (hoy hero; secundarias por Pexels).
+- [x] Desarrollo "QA que CORRIGE": el QA devuelve parches find/replace seguros que se aplican al HTML
+      (se omiten si no calzan → nunca rompe/trunca); guarda la versión corregida.
+- [~] Multi-imagen Higgsfield por sección (hoy hero live + Pexels; live multi-imagen pendiente por latencia).
 
 ### F. Ingeniería
 - [x] `tsc` y `build` limpios; sin código muerto evidente; sin debug logs.
