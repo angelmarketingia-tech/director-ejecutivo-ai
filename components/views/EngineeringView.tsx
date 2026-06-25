@@ -61,20 +61,33 @@ function ProjectBuilder() {
     if (!b.ok) return fail(b);
     setHtml(b.html);
 
-    // 3) QA → audita y reporta (NO reescribe el HTML; conserva el del build)
+    // 3) QA → audita, reporta Y CORRIGE (aplica parches seguros find/replace; si no calzan, se omiten)
     setPhase("review");
     const r = await step({ phase: "review", projectMd: a.projectMd, code: b.html });
     if (r.ok && Array.isArray(r.notes)) setNotes(r.notes);
-    setPhase("done");
-    setMsg("✅ Proyecto construido y revisado. Vista previa abajo (tu localhost) · descarga los archivos.");
 
-    // Guardar en el historial (servidor/KV) para no perderlo al cerrar.
-    if (b.html) {
+    let finalHtml = b.html as string;
+    let fixed = 0;
+    if (r.ok && Array.isArray(r.patches)) {
+      for (const p of r.patches) {
+        const find = typeof p?.find === "string" ? p.find : "";
+        if (find && find.length >= 4 && finalHtml.includes(find)) {
+          finalHtml = finalHtml.split(find).join(typeof p?.replace === "string" ? p.replace : "");
+          fixed++;
+        }
+      }
+    }
+    setHtml(finalHtml);
+    setPhase("done");
+    setMsg(`✅ Proyecto construido y revisado${fixed ? ` · QA aplicó ${fixed} mejora${fixed > 1 ? "s" : ""}` : ""}. Vista previa abajo · descarga los archivos.`);
+
+    // Guardar en el historial (servidor/KV) la versión YA corregida.
+    if (finalHtml) {
       const name = prompt.trim().slice(0, 80) || "Proyecto";
       fetch("/api/projects/list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, kind: "proyecto", html: b.html, projectMd: a.projectMd, summary: (r.notes || []).slice(0, 3).join(" · ") }),
+        body: JSON.stringify({ name, kind: "proyecto", html: finalHtml, projectMd: a.projectMd, summary: (r.notes || []).slice(0, 3).join(" · ") }),
       }).then(() => window.dispatchEvent(new Event("projects-changed"))).catch(() => {});
     }
   }

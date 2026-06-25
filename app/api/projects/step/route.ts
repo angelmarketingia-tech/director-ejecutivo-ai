@@ -61,9 +61,14 @@ Implementa TODOS los criterios del PROJECT.md con detalle y pulido de portafolio
 español de Colombia. Devuelve { html, summary }.`;
 
 const REVIEW_SYSTEM = `Eres DIRECTOR DE ARTE + QA front-end senior. Recibes un PROJECT.md y un HTML ya construido.
-NO reescribas el HTML (es grande). Tu trabajo es AUDITARLO y reportar en "notes" una checklist concreta:
-qué criterios de aceptación cumple, posibles errores de JS, problemas de responsive/accesibilidad/contraste,
-y mejoras puntuales recomendadas. Sé específico y honesto. Español de Colombia. Devuelve solo "notes".`;
+NO reescribas el HTML entero (es grande). Haz DOS cosas:
+1) "notes": checklist concreta y honesta (qué cumple, errores de JS, responsive/accesibilidad/contraste, mejoras).
+2) "patches": arreglos CONCRETOS y SEGUROS como pares find/replace EXACTOS y CORTOS, copiados LITERALMENTE del HTML.
+   - Cada "find" debe ser una subcadena ÚNICA y textual del HTML (cópiala tal cual, con sus comillas y espacios).
+   - Arregla cosas seguras: texto placeholder/lorem, alt/aria faltantes, atributos de accesibilidad, contraste,
+     loading="lazy" faltante, typos. NO reescribas secciones enteras ni toques <script> grandes.
+   - Máximo 8 patches. Si no hay arreglos seguros, devuelve "patches": [].
+Español de Colombia.`;
 
 const SCHEMAS = {
   architect: {
@@ -85,7 +90,18 @@ const SCHEMAS = {
   review: {
     type: "object",
     additionalProperties: false,
-    properties: { notes: { type: "array", items: { type: "string" } } },
+    properties: {
+      notes: { type: "array", items: { type: "string" } },
+      patches: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: { find: { type: "string" }, replace: { type: "string" } },
+          required: ["find", "replace"],
+        },
+      },
+    },
     required: ["notes"],
   },
 } as const;
@@ -153,7 +169,7 @@ export async function POST(req: Request) {
       model: "claude-sonnet-4-6",
       input: `PROJECT.md:\n${projectMd}\n\n--- HTML a auditar ---\n${code}`,
       schema: SCHEMAS.review,
-      maxTokens: 2200,
+      maxTokens: 3500,
     },
   };
 
