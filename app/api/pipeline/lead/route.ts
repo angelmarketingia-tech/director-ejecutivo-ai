@@ -102,9 +102,11 @@ export async function POST(req: Request) {
       const digits = lead.phone.replace(/[^\d]/g, "");
       if (digits.length >= 10) {
         try {
-          await queueHuman(digits, email.body);
-          sent = true;
-          sendNote = "Mensaje encolado: el conector lo enviará por WhatsApp con ritmo humano (anti-baneo). El bot seguirá la conversación.";
+          const queued = await queueHuman(digits, email.body);
+          sent = queued;
+          sendNote = queued
+            ? "Mensaje encolado: el conector lo enviará por WhatsApp con ritmo humano (anti-baneo). El bot seguirá la conversación."
+            : "No se envió: el contacto pidió baja o ya tenía un mensaje idéntico pendiente.";
         } catch {
           sendNote = "No se pudo encolar el WhatsApp (revisa KV/conector).";
         }

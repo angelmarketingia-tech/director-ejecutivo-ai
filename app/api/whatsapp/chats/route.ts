@@ -30,7 +30,8 @@ export async function POST(req: Request) {
   if (action === "send") {
     const text = vstr((data as any)?.text, 2000);
     if (!text) return NextResponse.json({ ok: false, error: "Falta 'text'" }, { status: 400 });
-    await queueHuman(to, text);
+    const queued = await queueHuman(to, text);
+    if (!queued) return NextResponse.json({ ok: false, error: "Este contacto pidió baja: no se le puede escribir.", chats: await getChats() }, { status: 409 });
   } else if (action === "bot") {
     await setChatBot(to, !!(data as any)?.on);
   } else {

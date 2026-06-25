@@ -5,7 +5,7 @@ import { timeAgo } from "@/lib/utils";
 import { Inbox, Send, Loader2, Bot, User, ArrowLeft } from "lucide-react";
 
 interface WaMsg { id: string; dir: "in" | "out"; by: "client" | "bot" | "human"; text: string; at: number; status?: string }
-interface WaChat { id: string; name?: string; botEnabled: boolean; hot?: boolean; messages: WaMsg[]; lastAt: number }
+interface WaChat { id: string; name?: string; botEnabled: boolean; hot?: boolean; optedOut?: boolean; messages: WaMsg[]; lastAt: number }
 
 export function WaInbox() {
   const [chats, setChats] = useState<WaChat[]>([]);
@@ -86,9 +86,13 @@ export function WaInbox() {
               return (
                 <button key={c.id} onClick={() => setSel(c.id)} className={`flex w-full flex-col items-start gap-0.5 border-b border-border/60 px-3 py-2.5 text-left hover:bg-surface/60 ${sel === c.id ? "bg-surface/80" : ""}`}>
                   <div className="flex w-full items-center gap-2">
-                    {c.hot && <span title="Lead caliente">🔥</span>}
+                    {c.hot && !c.optedOut && <span title="Lead caliente">🔥</span>}
                     <span className="truncate text-[12px] font-semibold text-text">{c.name || c.id}</span>
-                    {!c.botEnabled && <span className="rounded bg-hot/15 px-1 py-0.5 text-[8px] font-semibold text-hot">TÚ</span>}
+                    {c.optedOut ? (
+                      <span title="Pidió baja — no escribir" className="rounded bg-danger/15 px-1 py-0.5 text-[8px] font-semibold text-danger">BAJA</span>
+                    ) : !c.botEnabled ? (
+                      <span className="rounded bg-hot/15 px-1 py-0.5 text-[8px] font-semibold text-hot">TÚ</span>
+                    ) : null}
                     <span className="ml-auto shrink-0 text-[9px] text-text-dim">{timeAgo(c.lastAt)}</span>
                   </div>
                   <span className="line-clamp-1 text-[11px] text-text-dim">{last?.text}</span>

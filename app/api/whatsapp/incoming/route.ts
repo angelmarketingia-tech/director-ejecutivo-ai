@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
-import { addInbound, addBotReply, getChat, setChatBot, type WaChat } from "@/lib/wachat";
+import { addInbound, addBotReply, getChat, markOptedOut, type WaChat } from "@/lib/wachat";
 import { getKB, isOptOut } from "@/lib/knowledge";
 import { generateReply } from "@/lib/whatsappbot";
 import { getBudget } from "@/lib/agents/budget";
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     // OPT-OUT PERMANENTE: si pide baja, apaga el bot para ese contacto PARA SIEMPRE
     // (cumplimiento + anti-baneo: nunca volver a auto-escribirle).
     if (msgIsOptOut(message)) {
-      await setChatBot(from, false);
+      await markOptedOut(from);
       return NextResponse.json({ ok: true, reply: null, reason: "opt-out" });
     }
     if (!wantReply) return NextResponse.json({ ok: true, reply: null, reason: "stored" }); // ráfaga: guardado, sin responder aún
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
 
   // Salvaguardas: opt-out (en el historial reciente), bot apagado (handoff/opt-out), auto-respuesta off.
   const recentClient = chat.messages.filter((m) => m.dir === "in").slice(-6).map((m) => m.text).join(" ");
-  const optOut = msgIsOptOut(recentClient);
-  if (optOut) await setChatBot(from, false); // refuerza el apagado permanente
+  const optOut = msgIsOptOut(recentClient) || !!chat.optedOut;
+  if (optOut) await markOptedOut(from); // refuerza el apagado permanente
   if (optOut || !kb.autoReplyEnabled || !chat.botEnabled) {
     return NextResponse.json({ ok: true, reply: null, reason: optOut ? "opt-out" : !kb.autoReplyEnabled ? "auto-off" : "human" });
   }
