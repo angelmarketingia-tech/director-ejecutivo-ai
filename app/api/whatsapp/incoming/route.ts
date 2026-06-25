@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { addInbound, addBotReply, getChat, setChatBot, type WaChat } from "@/lib/wachat";
-import { getKB } from "@/lib/knowledge";
+import { getKB, isOptOut } from "@/lib/knowledge";
 import { generateReply } from "@/lib/whatsappbot";
 import { getBudget } from "@/lib/agents/budget";
 import { logSpend } from "@/lib/spendlog";
@@ -38,8 +38,7 @@ export async function POST(req: Request) {
   if (!replyOnly && !message) return NextResponse.json({ ok: false, error: "Falta 'message'" }, { status: 400 });
 
   const kb = await getKB();
-  const optWord = (kb.optOutWord || "").trim().toUpperCase();
-  const msgIsOptOut = (t: string) => !!optWord && t.trim().toUpperCase().includes(optWord);
+  const msgIsOptOut = (t: string) => isOptOut(t, kb);
 
   // Guarda el mensaje entrante (salvo en replyOnly, donde solo respondemos).
   let chat: WaChat | null;

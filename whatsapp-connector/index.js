@@ -64,7 +64,23 @@ const client = new Client({
 
 client.on("qr", (qr) => { console.log("\n📲 Escanea con WhatsApp Business → Ajustes → Dispositivos vinculados:\n"); qrcode.generate(qr, { small: true }); });
 client.on("authenticated", () => console.log("🔐 Autenticado."));
-client.on("disconnected", (r) => console.log("🔌 Desconectado:", r));
+
+// Auto-reconexión ante caídas transitorias (red, recarga de WhatsApp Web).
+// NO reintenta si fue LOGOUT (sesión cerrada a propósito → hay que reescanear QR).
+let reconnects = 0;
+client.on("disconnected", (reason) => {
+  console.log("🔌 Desconectado:", reason);
+  if (String(reason).toUpperCase().includes("LOGOUT")) {
+    console.log("⚠️ Sesión cerrada (LOGOUT). Reinicia el conector y vuelve a escanear el QR.");
+    return;
+  }
+  if (reconnects >= 5) { console.log("⛔ Demasiados intentos de reconexión. Reinicia el conector."); return; }
+  reconnects++;
+  const wait = Math.min(60000, 5000 * reconnects);
+  console.log(`🔁 Reintentando conexión en ${Math.round(wait / 1000)}s (intento ${reconnects})…`);
+  setTimeout(() => { client.initialize().catch((e) => console.error("reinit error:", e.message)); }, wait);
+});
+client.on("ready", () => { reconnects = 0; }); // conexión sana → resetea el contador
 
 // Sincroniza los chats existentes para verlos en la bandeja (como WhatsApp Web).
 async function syncChats() {

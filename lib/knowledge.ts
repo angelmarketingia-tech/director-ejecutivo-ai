@@ -61,6 +61,29 @@ export async function saveKB(patch: Partial<KnowledgeBase>): Promise<KnowledgeBa
   return next;
 }
 
+// Palabras de baja por defecto (además de la configurada en la KB).
+const DEFAULT_OPTOUT = ["BAJA", "STOP", "NO MOLESTAR", "NO ME ESCRIBAS", "DESUSCRIBIR", "ELIMINAR", "QUITAR DE LA LISTA"];
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Detecta intención de baja (opt-out) de forma robusta:
+ *  - frases (con espacio) → coincidencia por subcadena
+ *  - palabras sueltas → coincidencia por PALABRA COMPLETA (evita falsos positivos,
+ *    p.ej. "BAJA" dentro de "trabajaba").
+ */
+export function isOptOut(text: string, kb: KnowledgeBase): boolean {
+  const t = (text || "").trim().toUpperCase();
+  if (!t) return false;
+  const words = [kb.optOutWord, ...DEFAULT_OPTOUT]
+    .map((w) => (w || "").trim().toUpperCase())
+    .filter(Boolean);
+  return words.some((w) => {
+    if (w.includes(" ")) return t.includes(w);
+    return new RegExp(`(^|[^A-ZÁÉÍÓÚÑ0-9])${escapeRe(w)}([^A-ZÁÉÍÓÚÑ0-9]|$)`).test(t);
+  });
+}
+
 /** System prompt del asistente a partir de la base de conocimiento. */
 export function buildBotSystem(kb: KnowledgeBase): string {
   return [

@@ -129,6 +129,18 @@ test("AGENTE · opt-out (BAJA) no recibe auto-respuesta", async ({ request }) =>
   } else expect(r.status()).toBe(401);
 });
 
+test("AGENTE · opt-out reconoce STOP (varias palabras de baja)", async ({ request }) => {
+  const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000012", message: "STOP" } });
+  if (r.status() === 200) { const j = await r.json(); expect(j.reason).toBe("opt-out"); }
+  else expect(r.status()).toBe(401);
+});
+
+test("AGENTE · opt-out SIN falsos positivos ('rebaja' no es baja)", async ({ request }) => {
+  const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000013", message: "me interesa, hay alguna rebaja del precio?" } });
+  if (r.status() === 200) { const j = await r.json(); expect(j.reason).not.toBe("opt-out"); }
+  else expect(r.status()).toBe(401);
+});
+
 test("AGENTE · sin auto-respuesta activa → no responde solo", async ({ request }) => {
   const r = await request.post("/api/whatsapp/incoming", { data: { from: "573000000011", message: "hola, info" } });
   if (r.status() === 200) {
