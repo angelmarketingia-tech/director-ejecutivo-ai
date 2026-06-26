@@ -1,0 +1,31 @@
+# Lo que NO debe subir al deploy de Vercel (la app Next solo necesita app/lib/components/public).
+
+# Conector de WhatsApp Web: proceso LOCAL aparte (puppeteer/whatsapp-web.js, pesado).
+whatsapp-connector/
+.wwebjs_auth/
+.wwebjs_cache/
+**/.wwebjs_auth/
+**/.wwebjs_cache/
+
+# Datos locales y subidas (no van a serverless).
+data/
+
+# Pruebas y artefactos de test.
+e2e/
+test-results/
+playwright-report/
+playwright.config.ts
+
+# Ejemplos y utilidades locales.
+ejemplos/
+_serve_avemaria.js
+_serve_landing.js
+
+# Documentación (no afecta el build).
+AUDITORIA.md
+GOAL_PROMPT.md
+RUNBOOK.md
+PROYECTO_APP_JUAN_PABLO.md
+PROJECT_CENTRO_MANDO_PRODUCTO.md
+GUIA_USUARIOS_Y_FUNCIONES.md
+MANUAL_DE_USO.md
