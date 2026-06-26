@@ -93,21 +93,25 @@ export async function generateImageLive(
   }
 }
 
-/** Hero premium para una web de negocio (rubro + ciudad), generado en vivo. */
-export async function generateBusinessHeroLive(business: {
-  name?: string;
-  category?: string;
-  city?: string;
-  description?: string;
-}): Promise<LiveImage | null> {
-  const subject =
-    business.description?.trim() ||
-    [business.category, business.name && `para ${business.name}`, business.city && `en ${business.city}`]
-      .filter(Boolean)
-      .join(" ");
-  const prompt =
-    `Premium wide cinematic website hero photograph for ${subject || "a modern local business"}. ` +
-    `Inviting, professional, editorial commercial photography, warm natural light, shallow depth of field, ` +
-    `ultra detailed, high quality, no text, no watermark, no logo.`;
-  return generateImageLive(prompt, "16:9");
+/**
+ * MULTI-IMAGEN a medida: hero + imágenes de sección, generadas EN PARALELO con Higgsfield.
+ * Al ser concurrentes, el tiempo total ≈ una sola imagen (no la suma) → seguro para el límite de 300s.
+ * `count` = total de imágenes (1 hero + resto de sección). Devuelve solo las que salieron bien.
+ */
+export async function generateBusinessImagesLive(
+  business: { name?: string; category?: string; city?: string },
+  count = 3
+): Promise<LiveImage[]> {
+  if (!higgsfieldLiveEnabled()) return [];
+  const subject = [business.category, business.name && `para ${business.name}`, business.city && `en ${business.city}`]
+    .filter(Boolean)
+    .join(" ") || "a modern local business";
+  const base = "Professional editorial commercial photography, warm natural light, shallow depth of field, ultra detailed, high quality, no text, no watermark, no logo.";
+  const prompts = ([
+    { p: `Premium wide cinematic website HERO photograph for ${subject}. Inviting, aspirational. ${base}`, a: "16:9" },
+    { p: `Detail/close-up photograph of the product or service of ${subject}, appetizing and attractive. ${base}`, a: "1:1" },
+    { p: `Ambient/interior or team-at-work photograph for ${subject}, trustworthy and welcoming. ${base}`, a: "16:9" },
+  ] as { p: string; a: "16:9" | "1:1" }[]).slice(0, Math.max(1, Math.min(count, 3)));
+  const results = await Promise.all(prompts.map((x) => generateImageLive(x.p, x.a)));
+  return results.filter((r): r is LiveImage => !!r);
 }

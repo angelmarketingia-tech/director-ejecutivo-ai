@@ -57,7 +57,8 @@ Esta sesión cerró brechas de **resiliencia** (reintentos a la API), **rendimie
 - [x] Auditoría de gasto de tokens por usuario/acción; KPIs.
 - [x] Desarrollo "QA que CORRIGE": el QA devuelve parches find/replace seguros que se aplican al HTML
       (se omiten si no calzan → nunca rompe/trunca); guarda la versión corregida.
-- [~] Multi-imagen Higgsfield por sección (hoy hero live + Pexels; live multi-imagen pendiente por latencia).
+- [x] Multi-imagen Higgsfield: hero + imágenes de sección generadas EN PARALELO (tiempo ≈ una sola → seguro
+      para 300s); fallback a biblioteca/Pexels. Código muerto (`generateBusinessHeroLive`) eliminado.
 
 ### F. Ingeniería
 - [x] `tsc` y `build` limpios; sin código muerto evidente; sin debug logs.

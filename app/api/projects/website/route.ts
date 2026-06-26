@@ -5,7 +5,7 @@ import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { withSpend } from "@/lib/spendlog";
 import { searchImagesMulti } from "@/lib/integrations/images";
 import { higgsfieldHeroFor } from "@/lib/integrations/higgsfield";
-import { higgsfieldLiveEnabled, generateBusinessHeroLive } from "@/lib/integrations/higgsfield-live";
+import { higgsfieldLiveEnabled, generateBusinessImagesLive } from "@/lib/integrations/higgsfield-live";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel Pro
@@ -68,10 +68,10 @@ export async function POST(req: Request) {
   const phone = vstr(data?.phone, 40) ?? "";
   const notes = vstr(data?.notes, 600) ?? "";
 
-  // Imágenes REALES: hero EN VIVO con Higgsfield (cuenta Daptux) a medida del negocio;
-  // si no hay API, hero curado por rubro. Galería con fotos de stock (Pexels).
+  // Imágenes REALES: MULTI-IMAGEN en vivo con Higgsfield (hero + secciones, en paralelo);
+  // si no hay API, hero curado por rubro. Galería complementada con stock (Pexels).
   let hero = higgsfieldLiveEnabled()
-    ? [await generateBusinessHeroLive({ name, category, city })].filter(Boolean) as { url: string; alt: string }[]
+    ? await generateBusinessImagesLive({ name, category, city }, 3)
     : [];
   if (!hero.length) hero = higgsfieldHeroFor(category);
   const stockQueries = [category, `${category} ${city}`.trim(), name].filter(Boolean);
