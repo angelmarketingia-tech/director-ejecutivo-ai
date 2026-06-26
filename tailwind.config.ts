@@ -21,6 +21,7 @@ const config: Config = {
         "text-dim": "rgb(var(--c-text-dim) / <alpha-value>)",
         // Marca Daptux.IA (verde lima del logo)
         brand: "rgb(var(--c-brand) / <alpha-value>)",
+        "brand-ink": "rgb(var(--c-brand-ink) / <alpha-value>)", // para TEXTO (contraste AA)
         // Núcleo del Director + firmas de agentes
         director: "#E8C766",
         prospect: "#22D3EE",

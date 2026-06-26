@@ -13,11 +13,13 @@
   --c-surface-2: 19 27 50;
   --c-text: 234 240 255;
   --c-text-muted: 138 151 184;
-  --c-text-dim: 90 103 140;
+  --c-text-dim: 124 138 173; /* subido para contraste AA del texto secundario */
   --color-border: rgba(148, 163, 184, 0.12);
   --color-border-strong: rgba(148, 163, 184, 0.22);
-  /* Verde lima Daptux */
+  /* Verde lima Daptux (fondo de botones) */
   --c-brand: 155 207 58;
+  /* Verde de marca para TEXTO (contraste AA): claro=verde lima; en modo claro se oscurece */
+  --c-brand-ink: 155 207 58;
 
   --aurora-opacity: 1;
   --panel-edge: linear-gradient(135deg, rgba(34, 211, 238, 0.4), rgba(167, 139, 250, 0.16) 38%, transparent 68%);
@@ -32,10 +34,11 @@ html.light {
   --c-surface-2: 240 243 250;
   --c-text: 17 24 40;
   --c-text-muted: 71 85 116;
-  --c-text-dim: 120 134 165;
+  --c-text-dim: 88 99 124; /* oscurecido para contraste AA del texto secundario */
   --color-border: rgba(15, 23, 42, 0.12);
   --color-border-strong: rgba(15, 23, 42, 0.20);
   --c-brand: 124 174 30; /* verde un poco más oscuro para contraste en blanco */
+  --c-brand-ink: 74 105 18; /* texto de marca oscuro → AA sobre blanco */
 
   --aurora-opacity: 0.5;
   --panel-edge: linear-gradient(135deg, rgba(124, 174, 30, 0.35), rgba(34, 211, 238, 0.12) 40%, transparent 70%);

@@ -55,8 +55,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <span className="absolute inset-0 animate-pulse-ring rounded-xl ring-1 ring-brand/40" />
         </div>
         <div className="leading-tight">
-          <p className="text-[13px] font-semibold tracking-tight text-text">Daptux<span className="text-brand">.IA</span></p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-brand">
+          <p className="text-[13px] font-semibold tracking-tight text-text">Daptux<span className="text-brand-ink">.IA</span></p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-brand-ink">
             Centro de Mando
           </p>
         </div>
@@ -125,7 +125,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-surface/50 px-3 py-2.5">
-        <div className="grid h-8 w-8 place-items-center rounded-full bg-prospect/15 text-[11px] font-semibold text-prospect">
+        <div className="grid h-8 w-8 place-items-center rounded-full bg-prospect text-[11px] font-bold text-[#04212a]">
           AV
         </div>
         <div className="min-w-0 flex-1 leading-tight">

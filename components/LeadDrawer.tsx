@@ -466,7 +466,7 @@ export function LeadDrawer() {
               </button>
               {demoMsg && <p className="mb-2 text-[11px] text-text-muted">{demoMsg}</p>}
               {lead.demoUrl && (
-                <a href={lead.demoUrl} target="_blank" rel="noopener noreferrer" className="mb-2 block truncate text-[11px] text-brand underline">
+                <a href={lead.demoUrl} target="_blank" rel="noopener noreferrer" className="mb-2 block truncate text-[11px] text-brand-ink underline">
                   {lead.demoUrl}
                 </a>
               )}

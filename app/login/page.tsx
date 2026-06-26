@@ -53,9 +53,9 @@ export default function LoginPage() {
             <img src="/daptux-logo.png" alt="Daptux.IA" className="h-[72px] w-[72px] object-contain" />
           </div>
           <p className="text-[20px] font-bold tracking-tight text-text">
-            Daptux<span className="text-brand">.IA</span>
+            Daptux<span className="text-brand-ink">.IA</span>
           </p>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-brand">
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-brand-ink">
             Centro de Mando Comercial
           </p>
         </div>
@@ -65,19 +65,23 @@ export default function LoginPage() {
           Acceso restringido al equipo. Ingresa tus credenciales.
         </p>
 
-        <label className="label-eyebrow">Usuario</label>
+        <label htmlFor="login-user" className="label-eyebrow">Usuario</label>
         <input
+          id="login-user"
           data-testid="login-user"
+          aria-label="Usuario"
           value={user}
           onChange={(e) => setUser(e.target.value)}
           autoComplete="username"
           className="mb-3 mt-1.5 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-[13px] text-text outline-none transition-colors focus:border-brand/60"
         />
 
-        <label className="label-eyebrow">Contraseña</label>
+        <label htmlFor="login-password" className="label-eyebrow">Contraseña</label>
         <input
+          id="login-password"
           data-testid="login-password"
           type="password"
+          aria-label="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"

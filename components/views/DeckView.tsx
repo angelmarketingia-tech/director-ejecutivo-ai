@@ -176,7 +176,7 @@ function ControlBar() {
                 messageProspectsBatch(15);
               }
             }}
-            className="flex items-center gap-2 rounded-lg border border-brand/40 bg-brand/15 px-3 py-2 text-[12px] font-semibold text-brand transition-colors hover:bg-brand/25"
+            className="flex items-center gap-2 rounded-lg border border-brand/40 bg-brand/15 px-3 py-2 text-[12px] font-semibold text-brand-ink transition-colors hover:bg-brand/25"
             title="Genera el mensaje y lo envía por el conector (ritmo anti-baneo). Máximo 15 por tanda."
           >
             <Send className="h-3.5 w-3.5" /> Escribir a prospectos (lote seguro)
