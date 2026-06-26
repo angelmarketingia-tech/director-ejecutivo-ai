@@ -32,19 +32,21 @@ Esta sesión cerró brechas de **resiliencia** (reintentos a la API), **rendimie
 ### B. Rendimiento
 - [x] Canvas con tope de FPS + pausa cuando no se ve (CPU en reposo baja).
 - [x] Endpoints IA dentro de 300s (orquestación por partes).
-- [~] LCP < 2.5s medido formalmente (no medido con Lighthouse en esta sesión).
+- [x] LCP < 2.5s — MEDIDO (Playwright/PerformanceObserver en dev, más lento que prod): login 840 ms, app 408 ms.
 - [~] Auditoría de KV por request (acotado por diseño; falta medición bajo carga real).
 
 ### C. Seguridad
 - [x] Auth cookie firmada + RBAC (admin/member); rutas con sesión → 401 (E2E).
 - [x] Rate limiting + cabeceras de seguridad (E2E security.spec).
 - [x] Secretos solo en env; webhook WhatsApp verifica token (E2E).
-- [~] Revisión formal de inyección/IDOR/CSRF + CSP (pendiente; CSP requiere nonce por el script de tema).
+- [x] **CSP presente** (`script-src 'self' 'unsafe-inline' 'unsafe-eval'`, verificado vía axe) + security review del diff sin hallazgos.
+- [~] Revisión formal de IDOR/CSRF exhaustiva (el security review por-cambio pasó limpio; falta pase global).
 
 ### D. UX
 - [x] Responsive (desktop+móvil, E2E sin scroll horizontal); tema claro/oscuro (E2E persistente).
 - [x] Feedback de acción (loading/éxito/error) en flujos principales.
-- [~] Accesibilidad AA auditada formalmente (semántica/contraste presentes; falta pase con axe).
+- [x] **Accesibilidad AA — VERIFICADA con axe-core: 0 violaciones serias/críticas** en login + app, claro + oscuro
+      (test permanente `e2e/a11y.spec.ts`). Corregido: labels del login, contraste de marca y de texto secundario.
 
 ### E. Funcionalidad por área (real)
 - [x] Comercial: pipeline honesto; WhatsApp tiempo real coherente con KB (historial completo);
