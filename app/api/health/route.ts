@@ -26,6 +26,9 @@ export async function GET(req: Request) {
       unsplash: !!env.unsplashKey,
       resend: !!(env.resendKey && env.emailFrom),
       whatsappConnector: !!process.env.API_SHARED_SECRET,
+      // Fuentes de leads:
+      apify: !!process.env.APIFY_TOKEN,     // leads con teléfono + email (Google Maps scraper)
+      googleMaps: !!env.mapsKey,            // Google Places (teléfono; normalmente sin email)
     },
   });
 }
