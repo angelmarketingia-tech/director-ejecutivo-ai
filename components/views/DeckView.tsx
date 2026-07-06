@@ -29,7 +29,7 @@ function WebProspect() {
       const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ niche, city, count: 8 }),
+        body: JSON.stringify({ niche, city, count: 15 }),
       });
       const j = await r.json();
       if (j.ok) {
