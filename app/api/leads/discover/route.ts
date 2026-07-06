@@ -5,7 +5,7 @@ import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { saveLeads } from "@/lib/leadstore";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro: web_search real puede tardar >60s (evita 504 al obtener leads)
 
 /**
  * POST /api/leads/discover — prospección REAL por búsqueda web (Claude + web_search).

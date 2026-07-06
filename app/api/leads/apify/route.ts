@@ -4,7 +4,7 @@ import { rateLimit, readJsonLimited, authorized, vstr } from "@/lib/security";
 import { saveLeads } from "@/lib/leadstore";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro: el scraper de Apify puede tardar >60s
 
 /**
  * POST /api/leads/apify — negocios reales (con teléfono/email) vía Apify Google Maps.
