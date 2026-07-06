@@ -62,6 +62,22 @@ test("COMERCIAL · lead ofrece cierre 1-clic (demo + mensaje)", async ({ page })
   await assertClean(errors);
 });
 
+test("LEADS · filtro por nicho + exportar a Excel visibles", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-comercial").click();
+  await page.getByTestId("subnav-leads").click();
+  await expect(page.getByTestId("filter-nicho")).toBeVisible();
+  await expect(page.getByTestId("btn-export-excel")).toBeVisible();
+  await assertClean(errors);
+});
+
+test("COMERCIAL · búsqueda automática (Colombia) disponible", async ({ page }) => {
+  const errors = spyErrors(page);
+  await page.getByTestId("area-comercial").click();
+  await expect(page.getByTestId("btn-web-search-auto")).toBeVisible();
+  await assertClean(errors);
+});
+
 test("COMERCIAL · WhatsApp: bandeja visible y sin errores", async ({ page }) => {
   // Nota: el panel 'Asistente' usa /api/knowledge (requiere sesión); en demo sin login
   // no renderiza. La bandeja (chats) usa /api/whatsapp/chats y sí se ve.

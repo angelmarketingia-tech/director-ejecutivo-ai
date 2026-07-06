@@ -58,6 +58,35 @@ function WebProspect() {
     setLoading(false);
   }
 
+  // Búsqueda AUTOMÁTICA: recorre las principales ciudades de Colombia con el mismo nicho,
+  // acumulando resultados (sin duplicados). Un solo clic → muchos leads. Se detiene si falta
+  // token/saldo. Cada ciudad guarda en el servidor (KV).
+  const CITIES_CO = [
+    "Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena",
+    "Bucaramanga", "Pereira", "Santa Marta", "Cúcuta", "Villavicencio",
+  ];
+  async function searchAuto() {
+    setLoading(true);
+    setMsg("Búsqueda automática en Colombia…");
+    const endpoint = source === "apify" ? "/api/leads/apify" : source === "places" ? "/api/leads/places" : "/api/leads/discover";
+    let total = 0, done = 0, stop = "";
+    for (const c of CITIES_CO) {
+      setMsg(`Buscando "${niche}" en ${c}… (${done}/${CITIES_CO.length}) · ${total} añadidos`);
+      try {
+        const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche, city: c, count: 15 }) });
+        const j = await r.json();
+        if (j.ok) total += addDiscoveredLeads(j.leads || []);
+        else if (j.noToken) { stop = "⚠️ Falta APIFY_TOKEN en Vercel."; break; }
+        else if (j.noKey) { stop = "⚠️ Falta la clave de esa fuente."; break; }
+        else if (j.budgetExceeded) { stop = "⛔ Tope de gasto diario alcanzado."; break; }
+        else if (j.error) { stop = `Se detuvo (${String(j.error).slice(0, 60)}). Puede ser saldo de Apify.`; break; }
+      } catch { /* una ciudad falló → sigue con la siguiente */ }
+      done++;
+    }
+    setMsg(stop ? `${stop} · ${total} añadidos hasta ahora. Ábrelos en Leads.` : `✅ Automática lista: ${total} negocios añadidos en ${done} ciudades. Ábrelos en Leads.`);
+    setLoading(false);
+  }
+
   return (
     <div className="panel p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -109,7 +138,16 @@ function WebProspect() {
           className="flex items-center gap-2 rounded-lg border border-prospect/30 bg-prospect/10 px-3 py-2 text-[12px] font-semibold text-prospect transition-colors hover:bg-prospect/20 disabled:opacity-40"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-          {loading ? "Buscando en la web…" : "Buscar reales"}
+          {loading ? "Buscando…" : "Buscar reales"}
+        </button>
+        <button
+          data-testid="btn-web-search-auto"
+          onClick={searchAuto}
+          disabled={loading || !niche.trim()}
+          title="Busca el nicho en las principales ciudades de Colombia automáticamente (un clic)"
+          className="flex items-center gap-2 rounded-lg border border-brand/40 bg-brand/15 px-3 py-2 text-[12px] font-semibold text-brand transition-colors hover:bg-brand/25 disabled:opacity-40"
+        >
+          <Search className="h-3.5 w-3.5" /> Auto (Colombia)
         </button>
       </div>
       {msg && <p data-testid="web-result" className="mt-2 text-[11px] text-text-muted">{msg}</p>}
