@@ -133,7 +133,7 @@ export function LeadsView() {
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 100).map((l) => (
+            {rows.slice(0, 300).map((l) => (
               <tr
                 key={l.id}
                 data-testid="lead-row"

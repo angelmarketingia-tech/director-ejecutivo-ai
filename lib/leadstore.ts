@@ -19,7 +19,7 @@ export interface StoredLead {
 }
 
 const KEY = "leads:v1";
-const MAX = 1000;
+const MAX = 2000;
 
 export function leadStoreEnabled(): boolean {
   return kvConfigured();
@@ -30,21 +30,25 @@ export async function getStoredLeads(): Promise<StoredLead[]> {
   return (await kvGetJSON<StoredLead[]>(KEY)) ?? [];
 }
 
-/** Guarda leads nuevos, deduplicando por empresa+ciudad. Los nuevos van primero. */
+/** Guarda leads nuevos, deduplicando por empresa+ciudad. Los NUEVOS van PRIMERO
+ * (datos frescos + los más recientes se ven arriba y nunca se cortan por un tope). */
 export async function saveLeads(items: StoredLead[]): Promise<number> {
   if (!kvConfigured() || !items?.length) return 0;
   const current = await getStoredLeads();
-  const map = new Map<string, StoredLead>();
-  // Primero los actuales, luego los nuevos (los nuevos sobrescriben con datos frescos)
-  for (const l of current) map.set(keyOf(l), l);
+  const currentKeys = new Set(current.map(keyOf));
+  const newKeys = new Set(items.map(keyOf));
   let added = 0;
-  for (const l of items) {
+  for (const k of newKeys) if (!currentKeys.has(k)) added++;
+  // Nuevos primero (con datos frescos), luego los previos que no se repiten. Sin duplicados.
+  const seen = new Set<string>();
+  const merged: StoredLead[] = [];
+  for (const l of [...items, ...current]) {
     const k = keyOf(l);
-    if (!map.has(k)) added++;
-    map.set(k, l);
+    if (!l.company || seen.has(k)) continue;
+    seen.add(k);
+    merged.push(l);
   }
-  const merged = Array.from(map.values()).slice(0, MAX);
-  await kvSetJSON(KEY, merged);
+  await kvSetJSON(KEY, merged.slice(0, MAX));
   return added;
 }
 

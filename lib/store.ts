@@ -994,7 +994,8 @@ export const useDeck = create<DeckState>()(
           verified: true,
         } as Lead;
       });
-      const leads = [...mapped, ...s.leads].slice(0, 300);
+      // Tope alto: no perder leads guardados en el servidor (KV guarda hasta 2000).
+      const leads = [...mapped, ...s.leads].slice(0, 2000);
       return {
         leads,
         events: [
