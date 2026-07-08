@@ -67,15 +67,20 @@ test("LEADS · filtro por nicho + exportar a Excel visibles", async ({ page }) =
   await page.getByTestId("area-comercial").click();
   await page.getByTestId("subnav-leads").click();
   await expect(page.getByTestId("filter-nicho")).toBeVisible();
+  await expect(page.getByTestId("filter-city")).toBeVisible();
   await expect(page.getByTestId("btn-export-excel")).toBeVisible();
   await expect(page.getByTestId("btn-export-pdf")).toBeVisible();
   await assertClean(errors);
 });
 
-test("COMERCIAL · búsqueda automática (Colombia) disponible", async ({ page }) => {
+test("COMERCIAL · búsqueda automática mundial (país + auto) disponible", async ({ page }) => {
   const errors = spyErrors(page);
   await page.getByTestId("area-comercial").click();
+  await expect(page.getByTestId("web-country")).toBeVisible();
   await expect(page.getByTestId("btn-web-search-auto")).toBeVisible();
+  // cambia el país y verifica que el botón Auto refleja el país
+  await page.getByTestId("web-country").fill("México");
+  await expect(page.getByTestId("btn-web-search-auto")).toContainText("México");
   await assertClean(errors);
 });
 

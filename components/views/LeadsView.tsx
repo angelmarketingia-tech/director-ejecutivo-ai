@@ -86,17 +86,23 @@ export function LeadsView() {
   const selectLead = useDeck((s) => s.selectLead);
   const [filter, setFilter] = useState<"all" | LeadTemperature>("all");
   const [cat, setCat] = useState<string>("all");
+  const [cityF, setCityF] = useState<string>("all");
   const [q, setQ] = useState("");
 
-  // Nichos presentes (para el filtro).
+  // Nichos y ciudades presentes (para los filtros).
   const categories = useMemo(
     () => Array.from(new Set(leads.map((l) => l.category).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [leads]
+  );
+  const cities = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.city).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [leads]
   );
 
   const rows = leads
     .filter((l) => (filter === "all" ? true : l.temperature === filter))
     .filter((l) => (cat === "all" ? true : l.category === cat))
+    .filter((l) => (cityF === "all" ? true : l.city === cityF))
     .filter((l) => l.company.toLowerCase().includes(q.toLowerCase()))
     // Más caliente a menos, y dentro de cada temperatura por score.
     .sort((a, b) => TEMP_RANK[a.temperature] - TEMP_RANK[b.temperature] || b.score - a.score);
@@ -129,6 +135,18 @@ export function LeadsView() {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
+          {/* Filtro por ciudad (datos globales) */}
+          <select
+            data-testid="filter-city"
+            value={cityF}
+            onChange={(e) => setCityF(e.target.value)}
+            className="max-w-[180px] rounded-lg border border-border bg-bg-soft px-2.5 py-1.5 text-[12px] text-text outline-none focus:border-prospect/50"
+          >
+            <option value="all">Todas las ciudades</option>
+            {cities.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-2">
@@ -153,7 +171,7 @@ export function LeadsView() {
           </button>
           <button
             data-testid="btn-export-pdf"
-            onClick={() => exportPdf(rows, `Nicho: ${cat === "all" ? "todos" : cat} · Estado: ${FILTERS.find((f) => f.id === filter)?.label ?? "Todos"}`)}
+            onClick={() => exportPdf(rows, `Nicho: ${cat === "all" ? "todos" : cat} · Ciudad: ${cityF === "all" ? "todas" : cityF} · Estado: ${FILTERS.find((f) => f.id === filter)?.label ?? "Todos"}`)}
             disabled={rows.length === 0}
             title="Generar un PDF imprimible de los leads filtrados"
             className="flex items-center gap-1.5 rounded-lg border border-voice/40 bg-voice/15 px-3 py-2 text-[12px] font-semibold text-voice transition-colors hover:bg-voice/25 disabled:opacity-40"

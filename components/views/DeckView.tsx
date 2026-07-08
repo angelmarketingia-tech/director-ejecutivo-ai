@@ -10,12 +10,14 @@ import { HotLeads } from "@/components/deck/HotLeads";
 import { FollowUps } from "@/components/deck/FollowUps";
 import { PipelineBoard } from "@/components/deck/PipelineBoard";
 import { IS_DEMO } from "@/lib/demoFlag";
+import { COUNTRIES, citiesFor } from "@/lib/geo/worldCities";
 import { UserPlus, Zap, Globe, Loader2, Search, Send } from "lucide-react";
 
 function WebProspect() {
   const addDiscoveredLeads = useDeck((s) => s.addDiscoveredLeads);
   const [niche, setNiche] = useState("restaurantes");
-  const [city, setCity] = useState("Quito");
+  const [city, setCity] = useState("Bogotá");
+  const [country, setCountry] = useState("Colombia");
   const [source, setSource] = useState<"web" | "places" | "apify">("web");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -58,22 +60,20 @@ function WebProspect() {
     setLoading(false);
   }
 
-  // Búsqueda AUTOMÁTICA: recorre las principales ciudades de Colombia con el mismo nicho,
-  // acumulando resultados (sin duplicados). Un solo clic → muchos leads. Se detiene si falta
+  // Búsqueda AUTOMÁTICA MUNDIAL: recorre las principales ciudades del país elegido con el mismo
+  // nicho, acumulando resultados (sin duplicados). Un clic → muchos leads. Se detiene si falta
   // token/saldo. Cada ciudad guarda en el servidor (KV).
-  const CITIES_CO = [
-    "Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena",
-    "Bucaramanga", "Pereira", "Santa Marta", "Cúcuta", "Villavicencio",
-  ];
   async function searchAuto() {
+    const cities = citiesFor(country);
+    if (!cities.length) { setMsg("Escribe o elige un país válido."); return; }
     setLoading(true);
-    setMsg("Búsqueda automática en Colombia…");
+    setMsg(`Búsqueda automática en ${country}…`);
     const endpoint = source === "apify" ? "/api/leads/apify" : source === "places" ? "/api/leads/places" : "/api/leads/discover";
     let total = 0, done = 0, stop = "";
-    for (const c of CITIES_CO) {
-      setMsg(`Buscando "${niche}" en ${c}… (${done}/${CITIES_CO.length}) · ${total} añadidos`);
+    for (const c of cities) {
+      setMsg(`Buscando "${niche}" en ${c}, ${country}… (${done}/${cities.length}) · ${total} añadidos`);
       try {
-        const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche, city: c, count: 15 }) });
+        const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche, city: `${c}, ${country}`, count: 15 }) });
         const j = await r.json();
         if (j.ok) total += addDiscoveredLeads(j.leads || []);
         else if (j.noToken) { stop = "⚠️ Falta APIFY_TOKEN en Vercel."; break; }
@@ -83,7 +83,7 @@ function WebProspect() {
       } catch { /* una ciudad falló → sigue con la siguiente */ }
       done++;
     }
-    setMsg(stop ? `${stop} · ${total} añadidos hasta ahora. Ábrelos en Leads.` : `✅ Automática lista: ${total} negocios añadidos en ${done} ciudades. Ábrelos en Leads.`);
+    setMsg(stop ? `${stop} · ${total} añadidos hasta ahora. Ábrelos en Leads.` : `✅ Automática lista: ${total} negocios añadidos en ${done} ciudades de ${country}. Ábrelos en Leads.`);
     setLoading(false);
   }
 
@@ -128,9 +128,20 @@ function WebProspect() {
           data-testid="web-city"
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          placeholder="Ciudad (ej. Quito)"
-          className="min-w-[140px] flex-1 rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-prospect/50"
+          placeholder="Ciudad (búsqueda simple)"
+          className="min-w-[130px] flex-1 rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-prospect/50"
         />
+        <input
+          data-testid="web-country"
+          list="paises-mundo"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          placeholder="País (para Auto mundial)"
+          className="min-w-[130px] flex-1 rounded-lg border border-border bg-bg-soft px-3 py-2 text-[12px] text-text outline-none focus:border-brand/50"
+        />
+        <datalist id="paises-mundo">
+          {COUNTRIES.map((c) => <option key={c} value={c} />)}
+        </datalist>
         <button
           data-testid="btn-web-search"
           onClick={search}
@@ -143,11 +154,11 @@ function WebProspect() {
         <button
           data-testid="btn-web-search-auto"
           onClick={searchAuto}
-          disabled={loading || !niche.trim()}
-          title="Busca el nicho en las principales ciudades de Colombia automáticamente (un clic)"
+          disabled={loading || !niche.trim() || !country.trim()}
+          title="Busca el nicho automáticamente en las principales ciudades del país elegido (un clic)"
           className="flex items-center gap-2 rounded-lg border border-brand/40 bg-brand/15 px-3 py-2 text-[12px] font-semibold text-brand transition-colors hover:bg-brand/25 disabled:opacity-40"
         >
-          <Search className="h-3.5 w-3.5" /> Auto (Colombia)
+          <Globe className="h-3.5 w-3.5" /> Auto ({country || "mundo"})
         </button>
       </div>
       {msg && <p data-testid="web-result" className="mt-2 text-[11px] text-text-muted">{msg}</p>}
