@@ -41,6 +41,14 @@ export async function POST(req: Request) {
         error: "Falta APIFY_TOKEN. Pégalo en Vercel para usar Apify. No invento datos.",
       });
     }
-    return NextResponse.json({ ok: false, error: "No se pudo consultar Apify" }, { status: 502 });
+    // Sin saldo / límite mensual alcanzado (Apify bloquea el actor con 402/limit).
+    if (/\b402\b|payment|usage|limit|exceeded|quota|monthly|insufficient|credit/i.test(msg)) {
+      return NextResponse.json({
+        ok: false,
+        noBalance: true,
+        error: "Apify sin saldo este mes (límite alcanzado). Usa la fuente 'Google Places' o espera el reinicio del plan.",
+      });
+    }
+    return NextResponse.json({ ok: false, error: "No se pudo consultar Apify (intenta de nuevo o usa Google Places)." }, { status: 502 });
   }
 }

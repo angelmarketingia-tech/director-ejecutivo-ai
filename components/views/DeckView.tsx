@@ -49,6 +49,8 @@ function WebProspect() {
         );
       } else if (j.noToken) {
         setMsg("⚠️ Falta APIFY_TOKEN en Vercel para usar Apify.");
+      } else if (j.noBalance) {
+        setMsg("⛔ Apify sin saldo este mes. Cambia la fuente a 'Google Places (tel)' o espera el reinicio del plan.");
       } else if (j.budgetExceeded) {
         setMsg("⛔ Tope de gasto diario alcanzado. Súbelo en Configuración.");
       } else {
@@ -77,9 +79,10 @@ function WebProspect() {
         const j = await r.json();
         if (j.ok) total += addDiscoveredLeads(j.leads || []);
         else if (j.noToken) { stop = "⚠️ Falta APIFY_TOKEN en Vercel."; break; }
+        else if (j.noBalance) { stop = "⛔ Apify sin saldo este mes. Cambia la fuente a 'Google Places (tel)' o espera el reinicio."; break; }
         else if (j.noKey) { stop = "⚠️ Falta la clave de esa fuente."; break; }
         else if (j.budgetExceeded) { stop = "⛔ Tope de gasto diario alcanzado."; break; }
-        else if (j.error) { stop = `Se detuvo (${String(j.error).slice(0, 60)}). Puede ser saldo de Apify.`; break; }
+        else if (j.error) { stop = `Se detuvo: ${String(j.error).slice(0, 70)}`; break; }
       } catch { /* una ciudad falló → sigue con la siguiente */ }
       done++;
     }
