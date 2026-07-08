@@ -33,9 +33,9 @@ function exportExcel(rows: Lead[]) {
     l.company, l.category, l.city, l.phone ?? "", l.email ?? "", l.website ?? "",
     l.hasWebsite ? "Sí" : "No", l.score, TEMP_LABEL[l.temperature], STAGE_LABEL[l.stage],
     l.closeProbability, l.nextAction ?? "", l.contactName ?? "", l.sourceUrl ?? "",
-  ].map(csvCell).join(","));
-  // BOM para que Excel lea bien los acentos.
-  const csv = "﻿" + [headers.join(","), ...lines].join("\r\n");
+  ].map(csvCell).join(";"));
+  // Separador ';' = el que espera Excel en español (se abre en columnas). BOM para acentos.
+  const csv = "﻿" + [headers.join(";"), ...lines].join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
