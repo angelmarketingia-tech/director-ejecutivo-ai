@@ -68,6 +68,7 @@ test("LEADS · filtro por nicho + exportar a Excel visibles", async ({ page }) =
   await page.getByTestId("subnav-leads").click();
   await expect(page.getByTestId("filter-nicho")).toBeVisible();
   await expect(page.getByTestId("btn-export-excel")).toBeVisible();
+  await expect(page.getByTestId("btn-export-pdf")).toBeVisible();
   await assertClean(errors);
 });
 

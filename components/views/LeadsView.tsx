@@ -6,7 +6,7 @@ import { STAGE_LABEL } from "@/lib/demo/data";
 import { TEMP_COLOR, TEMP_LABEL } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 import type { LeadTemperature, Lead } from "@/lib/types";
-import { Search, Download } from "lucide-react";
+import { Search, Download, FileText } from "lucide-react";
 
 const FILTERS: Array<{ id: "all" | LeadTemperature; label: string }> = [
   { id: "all", label: "Todos" },
@@ -43,6 +43,42 @@ function exportExcel(rows: Lead[]) {
   a.download = `leads-daptux-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+const escHtml = (s: unknown) =>
+  String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** Reporte PDF limpio (vista imprimible → el usuario elige "Guardar como PDF"). */
+function exportPdf(rows: Lead[], meta: string) {
+  const body = rows
+    .map(
+      (l) => `<tr>
+      <td>${escHtml(l.company)}</td><td>${escHtml(l.category)}</td><td>${escHtml(l.city)}</td>
+      <td>${escHtml(l.phone ?? "")}</td><td>${escHtml(l.email ?? "")}</td>
+      <td>${l.hasWebsite ? "Sí" : "No"}</td><td style="text-align:right">${l.score}</td>
+      <td>${TEMP_LABEL[l.temperature]}</td><td>${STAGE_LABEL[l.stage]}</td>
+      <td style="text-align:right">${l.closeProbability}%</td></tr>`
+    )
+    .join("");
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Leads · Daptux.IA</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color:#111; }
+    h1 { font-size:16px; margin:0 0 2px; } .sub { color:#666; font-size:11px; margin:0 0 10px; }
+    table { width:100%; border-collapse:collapse; font-size:9.5px; }
+    th,td { border:1px solid #cfcfcf; padding:4px 6px; text-align:left; vertical-align:top; }
+    th { background:#eef2f7; } tr:nth-child(even) td { background:#fafbfd; }
+    thead { display: table-header-group; }
+  </style></head><body>
+    <h1>Leads · Daptux.IA</h1>
+    <p class="sub">${rows.length} leads · ${escHtml(meta)} · ${new Date().toLocaleDateString("es-CO")}</p>
+    <table><thead><tr>
+      <th>Empresa</th><th>Nicho</th><th>Ciudad</th><th>Teléfono</th><th>Email</th><th>Web</th><th>Score</th><th>Temp.</th><th>Etapa</th><th>Cierre</th>
+    </tr></thead><tbody>${body}</tbody></table>
+    <script>window.onload=function(){setTimeout(function(){window.print();},200);};</script>
+  </body></html>`;
+  const w = window.open("", "_blank");
+  if (w) { w.document.open(); w.document.write(html); w.document.close(); }
 }
 
 export function LeadsView() {
@@ -113,7 +149,16 @@ export function LeadsView() {
             title="Descargar los leads filtrados en Excel (CSV con teléfono y correo)"
             className="flex items-center gap-1.5 rounded-lg border border-email/40 bg-email/15 px-3 py-2 text-[12px] font-semibold text-email transition-colors hover:bg-email/25 disabled:opacity-40"
           >
-            <Download className="h-3.5 w-3.5" /> Exportar a Excel
+            <Download className="h-3.5 w-3.5" /> Excel
+          </button>
+          <button
+            data-testid="btn-export-pdf"
+            onClick={() => exportPdf(rows, `Nicho: ${cat === "all" ? "todos" : cat} · Estado: ${FILTERS.find((f) => f.id === filter)?.label ?? "Todos"}`)}
+            disabled={rows.length === 0}
+            title="Generar un PDF imprimible de los leads filtrados"
+            className="flex items-center gap-1.5 rounded-lg border border-voice/40 bg-voice/15 px-3 py-2 text-[12px] font-semibold text-voice transition-colors hover:bg-voice/25 disabled:opacity-40"
+          >
+            <FileText className="h-3.5 w-3.5" /> PDF
           </button>
         </div>
       </div>
